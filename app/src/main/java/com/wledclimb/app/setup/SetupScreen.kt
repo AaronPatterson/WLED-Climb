@@ -76,15 +76,20 @@ fun SetupScreen(
                 if (state.testing) {
                     CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
                 } else {
-                    // Null on a first run, where leaving would show a wall the
-                // app has no address for.
-                onCancel?.let { cancel ->
-                    TextButton(onClick = cancel, modifier = Modifier.padding(top = 8.dp)) {
-                        Text(text = stringResource(R.string.setup_cancel))
-                    }
-                }
-                Button(onClick = onTestAndSave, modifier = Modifier.padding(top = 16.dp)) {
+                    Button(onClick = onTestAndSave, modifier = Modifier.padding(top = 16.dp)) {
                         Text(text = stringResource(R.string.setup_test_and_save))
+                    }
+
+                    // Under the action that this screen exists to perform, not
+                    // above it. Setting an address is what someone came here
+                    // to do; leaving is the way out rather than the offer.
+                    //
+                    // Null on a first run, where leaving would show a wall the
+                    // app has no address for.
+                    onCancel?.let { cancel ->
+                        TextButton(onClick = cancel, modifier = Modifier.padding(top = 8.dp)) {
+                            Text(text = stringResource(R.string.setup_cancel))
+                        }
                     }
                 }
             }
