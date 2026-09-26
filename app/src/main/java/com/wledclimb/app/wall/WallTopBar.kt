@@ -7,6 +7,7 @@ import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -184,19 +185,48 @@ fun WallTopBar(
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_more),
-                        contentDescription = stringResource(R.string.wall_menu)
+                        contentDescription = stringResource(R.string.wall_menu),
+                        modifier = Modifier.size(28.dp)
                     )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // Same treatment as the row menu in the routes panel: a
+                    // glyph, a larger label and a taller row. A menu opened
+                    // rarely is exactly the one worth being able to read
+                    // without stopping to aim.
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.wall_change_controller)) },
+                        text = {
+                            Text(
+                                text = stringResource(R.string.wall_change_controller),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_controller),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         onClick = {
                             menuOpen = false
                             onChangeController()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.about_title)) },
+                        text = {
+                            Text(
+                                text = stringResource(R.string.about_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_about),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         onClick = {
                             menuOpen = false
                             aboutOpen = true
