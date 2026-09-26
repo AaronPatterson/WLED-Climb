@@ -70,7 +70,7 @@ fun WallTopBar(
     onToggle: () -> Unit,
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
-    onOpenRoutes: () -> Unit,
+    onToggleRoutes: () -> Unit,
     routeName: String?,
     modified: Boolean
 ) {
@@ -129,7 +129,7 @@ fun WallTopBar(
                 // promises a navigation drawer, and there is none, and it put
                 // the app's settings in the position someone reaches for to go
                 // somewhere.
-                IconButton(onClick = onOpenRoutes, enabled = enabled) {
+                IconButton(onClick = onToggleRoutes, enabled = enabled) {
                     Icon(
                         painter = painterResource(R.drawable.ic_routes),
                         contentDescription = stringResource(R.string.routes_open)

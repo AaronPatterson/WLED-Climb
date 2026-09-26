@@ -134,8 +134,29 @@ fun WallScreen(
                     onToggle = onToggle,
                     onBrightnessChange = onBrightnessChange,
                     onChangeController = onChangeController,
-                    onOpenRoutes = {
-                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List) }
+                    onToggleRoutes = {
+                        scope.launch {
+                            // A toggle, not a one-way trip. The same button
+                            // that covered the wall with the list puts it back,
+                            // so nobody has to know that the system back
+                            // gesture is the way out of a screen they opened
+                            // from the bar.
+                            //
+                            // On a tablet the list never leaves, so both sides
+                            // of this are the same thing and the button does
+                            // nothing visible - which is correct, there being
+                            // nothing to close.
+                            val showingRoutes =
+                                navigator.currentDestination?.pane ==
+                                    ListDetailPaneScaffoldRole.List
+                            navigator.navigateTo(
+                                if (showingRoutes) {
+                                    ListDetailPaneScaffoldRole.Detail
+                                } else {
+                                    ListDetailPaneScaffoldRole.List
+                                }
+                            )
+                        }
                     },
                     routeName = routes.firstOrNull { it.id == state.selectedRouteId }?.name,
                     modified = state.modified
