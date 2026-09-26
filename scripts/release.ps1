@@ -14,7 +14,20 @@
     every device in the house.
 
 .PARAMETER VersionName
-    The human-facing version, e.g. "0.4.0". versionCode is bumped automatically.
+    The human-facing version, e.g. "0.4.0", or "0.10.0-beta.1" with -Prerelease.
+    versionCode is bumped automatically.
+
+.PARAMETER Prerelease
+    Cuts a beta from the current branch instead of a release from main.
+
+    Everything about the artifact is the same: same signing key, same
+    applicationId, so it installs over whatever is already there and is a real
+    build rather than a preview of one. What changes is where it may come from
+    and who is offered it - the GitHub release is marked as a prerelease, which
+    Obtainium skips unless an app is explicitly set to include them.
+
+    It does not push to main. The tag points at the branch commit, which is the
+    honest thing for a build made from work that has not landed.
 
 .PARAMETER DryRun
     Do everything except commit, tag, push and publish. Use this to check the
@@ -23,10 +36,12 @@
 .EXAMPLE
     ./scripts/release.ps1 -VersionName 0.4.0 -DryRun
     ./scripts/release.ps1 -VersionName 0.4.0
+    ./scripts/release.ps1 -VersionName 0.10.0-beta.1 -Prerelease
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$VersionName,
+    [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')][string]$VersionName,
+    [switch]$Prerelease,
     [switch]$DryRun
 )
 
@@ -53,8 +68,15 @@ if (git status --porcelain) {
 }
 
 $branch = git rev-parse --abbrev-ref HEAD
-if ($branch -ne 'main') {
-    Fail "On branch '$branch'. Releases are cut from main, otherwise the tag points at history that isn't published."
+if (-not $Prerelease -and $branch -ne 'main') {
+    Fail "On branch '$branch'. Releases are cut from main, otherwise the tag points at history that isn't published. For a build from this branch use -Prerelease."
+}
+
+if ($VersionName -match '-' -and -not $Prerelease) {
+    Fail "'$VersionName' is a prerelease version. Pass -Prerelease, or give a plain x.y.z version."
+}
+if ($Prerelease -and $VersionName -notmatch '-') {
+    Fail "'$VersionName' is not a prerelease version. A beta wants a suffix like 0.10.0-beta.1, so nobody has to guess which build they are on."
 }
 
 if (git tag --list $tag) {
@@ -62,8 +84,12 @@ if (git tag --list $tag) {
 }
 
 git fetch --quiet origin
-if ((git rev-parse HEAD) -ne (git rev-parse origin/main)) {
-    Fail "Local main differs from origin/main. Pull or push first, so the tag matches what people can actually download."
+$upstream = if ($Prerelease) { "origin/$branch" } else { 'origin/main' }
+if (-not (git rev-parse --verify --quiet $upstream)) {
+    Fail "$upstream does not exist. Push the branch first, so the tag points at history someone else can fetch."
+}
+if ((git rev-parse HEAD) -ne (git rev-parse $upstream)) {
+    Fail "Local $branch differs from $upstream. Pull or push first, so the tag matches what people can actually download."
 }
 
 if (-not $env:JAVA_HOME) {
@@ -167,12 +193,13 @@ if ($DryRun) {
 Step 'Committing, tagging and publishing'
 
 git add $gradleFile
-git commit --quiet -m "Release $VersionName
+$commitSubject = if ($Prerelease) { "Prerelease $VersionName" } else { "Release $VersionName" }
+git commit --quiet -m "$commitSubject
 
 versionCode $currentCode -> $newCode, so devices see this as an update.
 Built and signature-verified by scripts/release.ps1."
 
-git tag -a $tag -m "Release $VersionName"
+git tag -a $tag -m "$commitSubject"
 
 # main requires a pull request, and this pushes to it directly. That is
 # deliberate and it is the only sanctioned exception: branch protection leaves
@@ -183,16 +210,27 @@ git tag -a $tag -m "Release $VersionName"
 # If that exemption is ever removed, do not paper over it by force-pushing.
 # Move the version bump into its own pull request and leave this script to tag,
 # build and publish only - then it never needs to write to main at all.
-git push --quiet origin main
+# For a prerelease this is the feature branch, which needs no exemption.
+git push --quiet origin $branch
 git push --quiet origin $tag
 
-& $gh release create $tag $asset `
-    --title "$VersionName" `
-    --notes "Signed release build. Install via Obtainium, or download the APK directly.
+if ($Prerelease) {
+    & $gh release create $tag $asset --prerelease `
+        --title "$VersionName" `
+        --notes "Beta build from branch `$branch`, signed with the release key and carrying the same applicationId as a release - so it installs over whatever is already on the device.
+
+Marked as a prerelease. Obtainium skips these unless an app is set to include prereleases, so devices tracking stable releases are not offered it.
 
 First install on a device that currently has a debug build needs an uninstall first - the signing certificate differs. See docs/releasing.md."
+} else {
+    & $gh release create $tag $asset `
+        --title "$VersionName" `
+        --notes "Signed release build. Install via Obtainium, or download the APK directly.
 
-Step "Released $VersionName"
+First install on a device that currently has a debug build needs an uninstall first - the signing certificate differs. See docs/releasing.md."
+}
+
+Step "$(if ($Prerelease) { 'Prereleased' } else { 'Released' }) $VersionName"
 Write-Host "  https://github.com/AaronPatterson/WLED-Climbing-Wall/releases/tag/$tag"
 
 # The bundle is deliberately not attached to the GitHub release. Nothing can
