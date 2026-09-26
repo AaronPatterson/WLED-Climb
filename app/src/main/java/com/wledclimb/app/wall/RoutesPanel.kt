@@ -52,13 +52,9 @@ fun RoutesPanel(
     selectedRouteId: Long?,
     currentFingerprint: String,
     canSave: Boolean,
-    modified: Boolean,
     onLoad: (Long) -> Unit,
     onNew: () -> Unit,
-    onRevert: () -> Unit,
-    onSave: () -> Unit,
     onRename: (StoredRoute) -> Unit,
-    onSaveAsNew: () -> Unit,
     onDelete: (StoredRoute) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -75,63 +71,16 @@ fun RoutesPanel(
                 modifier = Modifier.weight(1f)
             )
 
-            // All three in the header rather than two here and one buried in a
-            // row menu. Save as new was reachable only by opening the overflow
-            // on the route that happened to be loaded, which is no way to find
-            // out that keeping both versions is even possible.
+            // Only what is about the list itself. Saving, saving as a new
+            // route and resetting all act on what is on the wall, so they sit
+            // with the wall rather than here - the difference being that this
+            // panel answers "which route", and those three answer "what do I
+            // do with the one I have".
             IconButton(onClick = onNew) {
                 Icon(
                     painter = painterResource(R.drawable.ic_new),
                     contentDescription = stringResource(R.string.routes_new)
                 )
-            }
-            // Off when there is nothing to save, which is not only tidiness:
-            // routes are listed newest-changed first and saving always stamps
-            // updatedAt, so a redundant save would rewrite identical holds and
-            // jump the route to the top of the list. A button that does
-            // nothing, visibly.
-            //
-            // It also stops a blank wall being saved as a route, since nothing
-            // drawn is nothing changed.
-            IconButton(onClick = onSave, enabled = canSave && modified) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_save),
-                    contentDescription = stringResource(R.string.routes_save)
-                )
-            }
-            // Only means something with a route open: with none, saving
-            // already makes a new one, so this would be the same button twice.
-            //
-            // Deliberately not gated on there being changes. Copying a route
-            // to work from is a reason to press this, and the copy is worth
-            // making whether or not the original has been touched yet.
-            IconButton(onClick = onSaveAsNew, enabled = canSave && selectedRouteId != null) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_save_as),
-                    contentDescription = stringResource(R.string.routes_save_new)
-                )
-            }
-        }
-
-        // Only while there is something to reset. It explains the dot in the
-        // top bar as well as offering the way out, which is why it says what
-        // the state is rather than being a bare button.
-        if (modified) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 12.dp, bottom = 4.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.routes_unsaved_changes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = onRevert) {
-                    Text(stringResource(R.string.routes_reset))
-                }
             }
         }
 

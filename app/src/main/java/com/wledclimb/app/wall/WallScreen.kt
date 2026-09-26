@@ -214,7 +214,6 @@ fun WallScreen(
                                 // belong to. The save action goes quiet rather
                                 // than failing when pressed.
                                 canSave = state.wallId != null,
-                                modified = state.modified,
                                 onLoad = { routeId ->
                                     val load = {
                                         onLoadRoute(routeId)
@@ -229,7 +228,6 @@ fun WallScreen(
                                     }
                                     if (state.modified) pending = load else load()
                                 },
-                                onRevert = { resetting = true },
                                 onNew = {
                                     val new = {
                                         onNewRoute()
@@ -240,9 +238,7 @@ fun WallScreen(
                                     }
                                     if (state.modified) pending = new else new()
                                 },
-                                onSave = save,
                                 onRename = { renaming = it },
-                                onSaveAsNew = { savingAsNew = openRoute },
                                 onDelete = { deleting = it }
                             )
                         }
@@ -264,7 +260,9 @@ fun WallScreen(
                                     routeName = openRoute?.name,
                                     modified = state.modified,
                                     enabled = !state.busy,
-                                    onSave = save
+                                    onSave = save,
+                                    onSaveAs = { savingAsNew = openRoute },
+                                    onReset = { resetting = true }
                                 )
 
                                 Column(
@@ -425,7 +423,9 @@ private fun RouteTitle(
     routeName: String?,
     modified: Boolean,
     enabled: Boolean,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onSaveAs: () -> Unit,
+    onReset: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -447,20 +447,41 @@ private fun RouteTitle(
             modifier = Modifier.weight(1f)
         )
 
-        // The slot stays whether or not there is anything to save, so the name
-        // beside it does not move when the button comes and goes.
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (modified) {
-                FilledTonalIconButton(onClick = onSave, enabled = enabled) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_save),
-                        contentDescription = stringResource(R.string.routes_save_current),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+        // Everything that acts on what is on the wall, beside the name of what
+        // is on the wall. The routes list keeps only the one action that is
+        // about the list itself - starting a new route.
+        //
+        // No slot is reserved for any of these. The name is weighted, so it
+        // starts in the same place whatever appears to its right; only the
+        // width it has to truncate into changes.
+        if (modified) {
+            IconButton(onClick = onReset, enabled = enabled) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_reset),
+                    contentDescription = stringResource(R.string.routes_reset)
+                )
+            }
+        }
+
+        // Copying a route to work from is worth offering before anything has
+        // been changed, so this does not wait for edits the way the other two
+        // do - only for there being a route to copy.
+        if (routeName != null) {
+            IconButton(onClick = onSaveAs, enabled = enabled) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_save_as),
+                    contentDescription = stringResource(R.string.routes_save_new)
+                )
+            }
+        }
+
+        if (modified) {
+            FilledTonalIconButton(onClick = onSave, enabled = enabled) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_save),
+                    contentDescription = stringResource(R.string.routes_save_current),
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
