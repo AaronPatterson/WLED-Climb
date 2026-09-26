@@ -1,4 +1,4 @@
-package com.wledclimb.app.grid
+package com.wledclimb.app.network
 
 /**
  * One physical WLED panel within the overall LED matrix, as configured on the

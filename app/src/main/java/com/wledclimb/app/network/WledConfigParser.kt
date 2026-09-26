@@ -1,5 +1,6 @@
-package com.wledclimb.app.grid
+package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.Wall
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -50,4 +51,21 @@ fun parseGaps(rawGaps: String): List<Int> = try {
     (0 until array.length()).map { i -> array.getInt(i) }
 } catch (e: JSONException) {
     throw WledConfigException("The controller's gap file (/2d-gaps.json) isn't a valid list of numbers.", e)
+}
+
+
+/**
+ * The wall a controller is describing, from the two files that describe it.
+ *
+ * Everything WLED-shaped ends here: the panel layout, the gap file, and the
+ * judgement that a controller in 2D mode with no panels is not a wall anyone
+ * can climb. What comes out is a [Wall] and nothing else, which is what lets
+ * the rest of the app know nothing about `/json/cfg`.
+ */
+fun wallFrom(rawConfig: String, rawGaps: String?): Wall {
+    val panels = parsePanels(rawConfig)
+    if (panels.isEmpty()) {
+        throw WledConfigException("WLED is in 2D mode but has no panels configured.")
+    }
+    return buildWall(panels = panels, gaps = rawGaps?.let { parseGaps(it) })
 }

@@ -1,5 +1,7 @@
 package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.Wall
+
 import com.wledclimb.app.palette.HoldColor
 
 /**
@@ -39,15 +41,19 @@ interface WledClient {
      */
     suspend fun getIdentity(): WledIdentity
 
-    /** Raw JSON from `/json/cfg` (grid layout, LED count, segments). */
-    suspend fun getConfig(): String
-
     /**
-     * Raw JSON array from `/2d-gaps.json`, or null if no gap file is
-     * configured - WLED serves this only if one was uploaded via its own 2D
-     * setup UI, so its absence is the normal case, not an error.
+     * The wall's shape, from `/json/cfg` and the optional `/2d-gaps.json`.
+     *
+     * Returns a [Wall] rather than the JSON the two came in. These used to
+     * hand back raw bodies and leave the caller to make sense of them, which
+     * put WLED's config format in every ViewModel that connects and left the
+     * layer whose whole job is talking to the controller doing half of it.
+     *
+     * A gap file is optional - WLED serves one only if it was uploaded
+     * through its own 2D setup - and its absence is the normal case rather
+     * than an error.
      */
-    suspend fun getGaps(): String?
+    suspend fun getWall(): Wall
 
     /**
      * Lights individual holds. [lit] maps a **segment buffer index**

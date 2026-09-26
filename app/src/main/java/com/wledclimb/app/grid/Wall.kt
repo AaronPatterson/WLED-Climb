@@ -9,7 +9,8 @@ package com.wledclimb.app.grid
  * (`x + y * width`) and applies its own ledmap when rendering, so the strip
  * order never reaches anything the app sends. Tracking it meant porting WLED's
  * serpentine and panel-orientation walk to produce numbers nothing read - see
- * the git history of [buildWall] if it is ever needed again.
+ * the git history of the network layer's WallMapper if it is ever needed
+ * again.
  */
 data class Wall(
     val width: Int,

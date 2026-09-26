@@ -4,11 +4,8 @@ import com.wledclimb.app.palette.HoldColor
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wledclimb.app.grid.WledConfigException
+import com.wledclimb.app.network.WledConfigException
 import com.wledclimb.app.grid.Wall
-import com.wledclimb.app.grid.buildWall
-import com.wledclimb.app.grid.parseGaps
-import com.wledclimb.app.grid.parsePanels
 import com.wledclimb.app.network.WledIdentity
 import com.wledclimb.app.network.WledIdentityException
 import com.wledclimb.app.network.WledClient
@@ -37,8 +34,8 @@ private const val TAG = "WallViewModel"
 
 /**
  * Connects to the WLED controller saved during setup: turns the whole wall
- * on/off, and loads its grid layout (from `/json/cfg`) for display. Later
- * phases add per-hold route control.
+ * on/off, and asks the client for the wall's shape. Where that shape comes
+ * from, and what WLED says to describe it, is the client's business now.
  */
 class WallViewModel(
     private val client: WledClient,
@@ -144,12 +141,7 @@ class WallViewModel(
                 coroutineScope {
                     val status = async { client.getStatus() }
                     val identity = async { client.getIdentity() }
-                    val config = async { client.getConfig() }
-                    val gaps = async { client.getGaps() }
-                    val wall = buildWall(
-                        panels = parsePanels(config.await()),
-                        gaps = gaps.await()?.let { parseGaps(it) }
-                    )
+                    val wall = async { client.getWall() }.await()
                     val stored = storedWall(identity.await(), wall)
                     restore = stored
                     WallUiState.Connected(

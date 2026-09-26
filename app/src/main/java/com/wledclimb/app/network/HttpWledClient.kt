@@ -1,6 +1,10 @@
 package com.wledclimb.app.network
 
 import com.wledclimb.app.palette.HoldColor
+import android.util.Log
+import com.wledclimb.app.grid.Wall
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -114,29 +118,45 @@ class HttpWledClient(
         }
     }
 
-    override suspend fun getConfig(): String = withContext(Dispatchers.IO) {
+    override suspend fun getWall(): Wall = withContext(Dispatchers.IO) {
+        // Both files at once. They do not depend on each other and the second
+        // is usually a 404, so waiting for the first before asking costs a
+        // round trip for nothing.
+        coroutineScope {
+            val config = async { fetchConfig() }
+            val gaps = async { fetchGaps() }
+            wallFrom(rawConfig = config.await(), rawGaps = gaps.await())
+        }
+    }
+
+    private fun fetchConfig(): String {
         val request = Request.Builder()
             .url("$baseUrl/json/cfg")
             .get()
             .build()
 
-        httpClient.newCall(request).execute().use { response ->
+        return httpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
             }
-            response.body?.string() ?: throw IOException("Empty response from WLED")
+            val body = response.body?.string()
+                ?: throw IOException("Empty response from WLED")
+            // Logged raw, because a config that will not parse is the thing
+            // worth seeing and by the time it is a Wall it is gone.
+            Log.d(TAG, "WLED config for $baseUrl: $body")
+            body
         }
     }
 
-    override suspend fun getGaps(): String? = withContext(Dispatchers.IO) {
+    /** Null when no gap file is configured, which WLED answers with a 404. */
+    private fun fetchGaps(): String? {
         val request = Request.Builder()
             .url("$baseUrl/2d-gaps.json")
             .get()
             .build()
 
-        httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@withContext null
-            response.body?.string()
+        return httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) null else response.body?.string()
         }
     }
 
@@ -190,3 +210,5 @@ class HttpWledClient(
         }
     }
 }
+
+private const val TAG = "HttpWledClient"

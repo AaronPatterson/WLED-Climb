@@ -1,4 +1,4 @@
-package com.wledclimb.app.grid
+package com.wledclimb.app.network
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

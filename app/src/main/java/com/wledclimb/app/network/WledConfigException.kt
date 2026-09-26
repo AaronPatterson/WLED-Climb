@@ -1,4 +1,4 @@
-package com.wledclimb.app.grid
+package com.wledclimb.app.network
 
 /**
  * The controller answered, but its configuration isn't a usable 2D matrix -

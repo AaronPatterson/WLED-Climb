@@ -3,8 +3,7 @@ package com.wledclimb.app.setup
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wledclimb.app.grid.WledConfigException
-import com.wledclimb.app.grid.parsePanels
+import com.wledclimb.app.network.WledConfigException
 import com.wledclimb.app.network.HttpWledClient
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.settings.WledSettings
@@ -68,12 +67,11 @@ class SetupViewModel(
                 // Parsed, not just fetched: anything that answers with HTTP 200 would
                 // otherwise pass setup, and the user would only find out on the next
                 // screen - by which point they can no longer correct the address.
-                val rawConfig = clientFactory(baseUrl).getConfig()
-                Log.d(TAG, "WLED config for $baseUrl: $rawConfig")
-                val panels = parsePanels(rawConfig)
-                if (panels.isEmpty()) {
-                    throw WledConfigException("WLED is in 2D mode but has no panels configured.")
-                }
+                // Parsed, not just fetched: anything answering with HTTP 200
+                // would otherwise pass setup, and the user would find out on
+                // the next screen - by which point the address is no longer in
+                // front of them to correct.
+                clientFactory(baseUrl).getWall()
                 settings.saveWledIp(baseUrl)
                 SetupUiState.Connected(ip = baseUrl)
             } catch (e: CancellationException) {
