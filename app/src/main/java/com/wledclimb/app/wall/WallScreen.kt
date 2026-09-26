@@ -77,6 +77,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
@@ -451,7 +452,8 @@ private fun RouteTitle(
     onRename: (String) -> Unit
 ) {
     var editing by remember(routeName) { mutableStateOf(false) }
-    var draft by remember(routeName) { mutableStateOf(routeName.orEmpty()) }
+    // Selected on open, so a rename is one gesture rather than clearing first.
+    var draft by remember(routeName) { mutableStateOf(selectAll(routeName.orEmpty())) }
     val focusRequester = remember { FocusRequester() }
     // The field reports itself unfocused once on first composition, before the
     // request below has been granted. Committing on that would close the field
@@ -459,7 +461,7 @@ private fun RouteTitle(
     var hasFocused by remember(routeName) { mutableStateOf(false) }
 
     val commit = {
-        val trimmed = draft.trim()
+        val trimmed = draft.text.trim()
         if (trimmed.isNotBlank() && trimmed != routeName) onRename(trimmed)
         editing = false
     }
