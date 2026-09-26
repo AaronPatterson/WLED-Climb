@@ -79,6 +79,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
@@ -135,7 +138,27 @@ fun WallScreen(
         if (openRoute == null) saving = true else onSaveRoute(openRoute.name, openRoute.id)
     }
 
+    // Where there is room for both panes, the routes list can still be put
+    // away - a wall is worth more width than a list of names, and editing one
+    // is what the extra space is for.
+    //
+    // Done by overriding how many panes the scaffold may show rather than by
+    // navigating: navigating picks which pane is current, and where both fit
+    // that changes nothing. Survives rotation, because turning a tablet is not
+    // a request to bring the list back.
+    var routesCollapsed by rememberSaveable { mutableStateOf(false) }
+    val roomForBoth = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val directive = if (routesCollapsed) {
+        roomForBoth.copy(maxHorizontalPartitions = 1)
+    } else {
+        roomForBoth
+    }
+    // False on a phone, where there was never a second pane to collapse and
+    // the button keeps its original job of moving between them.
+    val showsBothPanes = roomForBoth.maxHorizontalPartitions > 1
+
     val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>(
+        scaffoldDirective = directive,
         initialDestinationHistory = listOf(
             ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
             ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
@@ -164,27 +187,31 @@ fun WallScreen(
                         // already; the bar itself sits outside that, which is
                         // why this has to say so.
                         brightnessOpen = false
-                        scope.launch {
-                            // A toggle, not a one-way trip. The same button
-                            // that covered the wall with the list puts it back,
-                            // so nobody has to know that the system back
-                            // gesture is the way out of a screen they opened
-                            // from the bar.
-                            //
-                            // On a tablet the list never leaves, so both sides
-                            // of this are the same thing and the button does
-                            // nothing visible - which is correct, there being
-                            // nothing to close.
-                            val showingRoutes =
-                                navigator.currentDestination?.pane ==
-                                    ListDetailPaneScaffoldRole.List
-                            navigator.navigateTo(
-                                if (showingRoutes) {
-                                    ListDetailPaneScaffoldRole.Detail
-                                } else {
-                                    ListDetailPaneScaffoldRole.List
+
+                        if (showsBothPanes) {
+                            // Put the list away, or bring it back. Collapsing
+                            // also makes the wall the current pane, or the
+                            // single pane left would be the list - which is
+                            // hiding the wrong half.
+                            routesCollapsed = !routesCollapsed
+                            if (routesCollapsed) {
+                                scope.launch {
+                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                                 }
-                            )
+                            }
+                        } else {
+                            scope.launch {
+                                val showingRoutes =
+                                    navigator.currentDestination?.pane ==
+                                        ListDetailPaneScaffoldRole.List
+                                navigator.navigateTo(
+                                    if (showingRoutes) {
+                                        ListDetailPaneScaffoldRole.Detail
+                                    } else {
+                                        ListDetailPaneScaffoldRole.List
+                                    }
+                                )
+                            }
                         }
                     },
                 )
