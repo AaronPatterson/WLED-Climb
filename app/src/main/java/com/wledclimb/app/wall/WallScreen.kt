@@ -252,18 +252,35 @@ fun WallScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 8.dp, bottom = 16.dp)
                             ) {
-                                ConnectedContent(
-                                    state = state,
+                                // Pinned under the bar rather than carried
+                                // along with the grid. The wall is centred in
+                                // whatever height is left over, and a title
+                                // centred with it drifted down the screen away
+                                // from the bar it belongs under.
+                                RouteTitle(
                                     routeName = openRoute?.name,
-                                    onSave = save,
-                                    onHoldTap = onHoldTap,
-                                    onColorSelect = onColorSelect,
-                                    onClearWall = onClearWall
+                                    modified = state.modified,
+                                    enabled = !state.busy,
+                                    onSave = save
                                 )
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    ConnectedContent(
+                                        state = state,
+                                        onHoldTap = onHoldTap,
+                                        onColorSelect = onColorSelect,
+                                        onClearWall = onClearWall
+                                    )
+                                }
                             }
                         }
                     }
@@ -449,8 +466,6 @@ private fun RouteTitle(
 @Composable
 private fun ColumnScope.ConnectedContent(
     state: WallUiState.Connected,
-    routeName: String?,
-    onSave: () -> Unit,
     onHoldTap: (segmentIndex: Int) -> Unit,
     onColorSelect: (HoldColor) -> Unit,
     onClearWall: () -> Unit
@@ -458,17 +473,6 @@ private fun ColumnScope.ConnectedContent(
     var scale by remember { mutableFloatStateOf(MIN_GRID_SCALE) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(Size.Zero) }
-
-    // The route's own title, above the wall it is drawn on. It sat in the app
-    // bar until a long name started wrapping and stealing height from the
-    // grid; a full-width row has the space the bar did not, and puts the name
-    // beside the thing it names rather than beside the wall's controls.
-    RouteTitle(
-        routeName = routeName,
-        modified = state.modified,
-        enabled = !state.busy,
-        onSave = onSave
-    )
 
     WallGrid(
         wall = state.wall,
