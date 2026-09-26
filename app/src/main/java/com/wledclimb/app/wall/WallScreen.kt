@@ -135,6 +135,12 @@ fun WallScreen(
                     onBrightnessChange = onBrightnessChange,
                     onChangeController = onChangeController,
                     onToggleRoutes = {
+                        // The brightness row floats over the content, so going
+                        // to the routes would have left it hanging over the
+                        // list. It closes on a press anywhere below the bar
+                        // already; the bar itself sits outside that, which is
+                        // why this has to say so.
+                        brightnessOpen = false
                         scope.launch {
                             // A toggle, not a one-way trip. The same button
                             // that covered the wall with the list puts it back,
