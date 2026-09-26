@@ -113,6 +113,15 @@ fun WallScreen(
     //
     // The list is seeded behind it rather than replaced by it, so back from the
     // wall reaches the routes on a phone instead of leaving the app.
+    // Saving a route that already has a name just saves it; work with no name
+    // yet has to be given one. Defined once because the bar and the routes
+    // panel both offer it, and two copies would eventually disagree.
+    val openRoute = (state as? WallUiState.Connected)
+        ?.let { s -> routes.firstOrNull { it.id == s.selectedRouteId } }
+    val save = {
+        if (openRoute == null) saving = true else onSaveRoute(openRoute.name, openRoute.id)
+    }
+
     val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>(
         initialDestinationHistory = listOf(
             ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
@@ -165,7 +174,8 @@ fun WallScreen(
                             )
                         }
                     },
-                    routeName = routes.firstOrNull { it.id == state.selectedRouteId }?.name,
+                    onSave = save,
+                    routeName = openRoute?.name,
                     modified = state.modified
                 )
 
@@ -230,21 +240,7 @@ fun WallScreen(
                                     }
                                     if (state.modified) pending = new else new()
                                 },
-                                onSave = {
-                                    // Saving a route that already has a name
-                                    // just saves it. Offering the name here
-                                    // made every save a rename as well, which
-                                    // is a different intention and has its own
-                                    // action in the row menu.
-                                    val open = routes.firstOrNull {
-                                        it.id == state.selectedRouteId
-                                    }
-                                    if (open == null) {
-                                        saving = true
-                                    } else {
-                                        onSaveRoute(open.name, open.id)
-                                    }
-                                },
+                                onSave = save,
                                 onRename = { renaming = it },
                                 onSaveAsNew = { savingAsNew = it },
                                 onDelete = { deleting = it }

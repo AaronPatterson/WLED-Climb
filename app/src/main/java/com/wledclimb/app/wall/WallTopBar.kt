@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +73,7 @@ fun WallTopBar(
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
     onToggleRoutes: () -> Unit,
+    onSave: () -> Unit,
     routeName: String?,
     modified: Boolean
 ) {
@@ -90,27 +92,54 @@ fun WallTopBar(
                 // working on. The route is the larger of the two because it is
                 // the thing that changes, and the one you look up to check.
                 //
-                // The whole block opens the routes, and closes them again, the
-                // same as the button on the left. Naming what is loaded is
-                // already an invitation to ask what else there is, and a title
-                // that answers a tap is a much bigger target than an icon -
-                // which matters for the person this app is for.
-                Column(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .clickable(
+                // The names open the routes, and close them again, the same as
+                // the button on the left. Naming what is loaded is already an
+                // invitation to ask what else there is, and a title that
+                // answers a tap is a much bigger target than an icon - which
+                // matters for the person this app is for.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Unsaved work used to be a dot beside the route name. A
+                    // dot says there is something to do without being the
+                    // thing that does it, and at that size it could not be.
+                    // This is the same signal and the action at once: it is
+                    // here only while there is something to save, and pressing
+                    // it is how it goes away.
+                    //
+                    // Left of the names rather than among the wall controls on
+                    // the right. Saving belongs to the route, which is what
+                    // this side of the bar is about; power and brightness
+                    // belong to the wall.
+                    if (modified) {
+                        FilledTonalIconButton(
+                            onClick = onSave,
                             enabled = enabled,
-                            onClickLabel = stringResource(R.string.routes_open),
-                            onClick = onToggleRoutes
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_save),
+                                contentDescription = stringResource(
+                                    R.string.routes_save_current
+                                ),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(
+                                enabled = enabled,
+                                onClickLabel = stringResource(R.string.routes_open),
+                                onClick = onToggleRoutes
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = routeName ?: stringResource(R.string.routes_unsaved),
                             style = MaterialTheme.typography.titleMedium,
@@ -120,21 +149,6 @@ fun WallTopBar(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        if (modified) {
-                            // A dot rather than a word: it sits beside a name
-                            // that can already be long, and "there is unsaved
-                            // work" is a fact that does not need a sentence.
-                            Box(
-                                modifier = Modifier
-                                    .padding(start = 6.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .semantics {
-                                        contentDescription = unsavedDescription
-                                    }
-                            )
-                        }
                     }
                 }
             },
