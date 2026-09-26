@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,6 +67,8 @@ import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneSca
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.ui.text.style.TextOverflow
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
@@ -174,9 +177,6 @@ fun WallScreen(
                             )
                         }
                     },
-                    onSave = save,
-                    routeName = openRoute?.name,
-                    modified = state.modified
                 )
 
                 // The list beside the editor where there is room and one at a
@@ -258,6 +258,8 @@ fun WallScreen(
                             ) {
                                 ConnectedContent(
                                     state = state,
+                                    routeName = openRoute?.name,
+                                    onSave = save,
                                     onHoldTap = onHoldTap,
                                     onColorSelect = onColorSelect,
                                     onClearWall = onClearWall
@@ -402,8 +404,53 @@ private fun ColumnScope.ConnectingContent() {
 }
 
 @Composable
+private fun RouteTitle(
+    routeName: String?,
+    modified: Boolean,
+    enabled: Boolean,
+    onSave: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = routeName ?: stringResource(R.string.routes_unsaved),
+            style = MaterialTheme.typography.titleLarge,
+            color = if (routeName == null) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+
+        // The slot stays whether or not there is anything to save, so the name
+        // beside it does not move when the button comes and goes.
+        Box(
+            modifier = Modifier.size(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (modified) {
+                FilledTonalIconButton(onClick = onSave, enabled = enabled) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_save),
+                        contentDescription = stringResource(R.string.routes_save_current),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ColumnScope.ConnectedContent(
     state: WallUiState.Connected,
+    routeName: String?,
+    onSave: () -> Unit,
     onHoldTap: (segmentIndex: Int) -> Unit,
     onColorSelect: (HoldColor) -> Unit,
     onClearWall: () -> Unit
@@ -411,6 +458,17 @@ private fun ColumnScope.ConnectedContent(
     var scale by remember { mutableFloatStateOf(MIN_GRID_SCALE) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(Size.Zero) }
+
+    // The route's own title, above the wall it is drawn on. It sat in the app
+    // bar until a long name started wrapping and stealing height from the
+    // grid; a full-width row has the space the bar did not, and puts the name
+    // beside the thing it names rather than beside the wall's controls.
+    RouteTitle(
+        routeName = routeName,
+        modified = state.modified,
+        enabled = !state.busy,
+        onSave = onSave
+    )
 
     WallGrid(
         wall = state.wall,
@@ -425,7 +483,7 @@ private fun ColumnScope.ConnectedContent(
         },
         modifier = Modifier
             .weight(1f, fill = false)
-            .padding(top = 16.dp)
+            .padding(top = 8.dp)
     )
     GridControls(
         scale = scale,

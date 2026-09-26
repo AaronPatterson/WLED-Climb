@@ -74,9 +74,6 @@ fun WallTopBar(
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
     onToggleRoutes: () -> Unit,
-    onSave: () -> Unit,
-    routeName: String?,
-    modified: Boolean
 ) {
     val unsavedDescription = stringResource(R.string.routes_unsaved_changes)
     var menuOpen by remember { mutableStateOf(false) }
@@ -89,91 +86,27 @@ fun WallTopBar(
     TopAppBar(
         modifier = modifier,
         title = {
-                // Two lines: the wall is which wall, the route is what you are
-                // working on. The route is the larger of the two because it is
-                // the thing that changes, and the one you look up to check.
+                // The wall's name, and only that. The route moved down onto
+                // the screen it belongs to, where a full-width row has room
+                // for a name this bar was truncating at about twenty
+                // characters.
                 //
-                // The names open the routes, and close them again, the same as
-                // the button on the left. Naming what is loaded is already an
-                // invitation to ask what else there is, and a title that
-                // answers a tap is a much bigger target than an icon - which
-                // matters for the person this app is for.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Unsaved work used to be a dot beside the route name. A
-                    // dot says there is something to do without being the
-                    // thing that does it, and at that size it could not be.
-                    // This is the same signal and the action at once: it is
-                    // here only while there is something to save, and pressing
-                    // it is how it goes away.
-                    //
-                    // Left of the names rather than among the wall controls on
-                    // the right. Saving belongs to the route, which is what
-                    // this side of the bar is about; power and brightness
-                    // belong to the wall.
-                    // The slot is always here, holding a button only when
-                    // there is something to save. Appearing and disappearing
-                    // would slide the names under the finger that just pressed
-                    // it, and the thing that moves into that space is the
-                    // title, which opens the routes - so a second tap would
-                    // land somewhere nobody aimed.
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .size(48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (modified) {
-                            FilledTonalIconButton(onClick = onSave, enabled = enabled) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_save),
-                                    contentDescription = stringResource(
-                                        R.string.routes_save_current
-                                    ),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            // Takes what is left after the save slot, and no
-                            // more, so a long name is cut rather than shoving
-                            // the wall controls off the end of the bar.
-                            .weight(1f, fill = false)
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable(
-                                enabled = enabled,
-                                onClickLabel = stringResource(R.string.routes_open),
-                                onClick = onToggleRoutes
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        // One line each, cut with an ellipsis. Left to wrap,
-                        // a long route name grew the bar downwards and took
-                        // the height out of the grid - the name of a route is
-                        // worth a line, never two, and least of all at the
-                        // cost of the wall it belongs to.
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                // Still opens the routes on a tap, because a title that
+                // answers one is a far bigger target than the icon beside it.
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(
+                            enabled = enabled,
+                            onClickLabel = stringResource(R.string.routes_open),
+                            onClick = onToggleRoutes
                         )
-                        Text(
-                            text = routeName ?: stringResource(R.string.routes_unsaved),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (routeName == null) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                )
             },
             navigationIcon = {
                 // The left of an app bar is where navigation lives, and the
