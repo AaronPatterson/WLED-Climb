@@ -95,7 +95,10 @@ fun WallTopBar(
                 // answers one is a far bigger target than the icon beside it.
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.titleMedium,
+                    // titleLarge is what Material gives an app bar title. It
+                    // was a size down from that to leave room for the route
+                    // name beside it, and the route name has since moved out.
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
@@ -105,7 +108,9 @@ fun WallTopBar(
                             onClickLabel = stringResource(R.string.routes_open),
                             onClick = onToggleRoutes
                         )
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        // Only enough to give the ripple a shape. More read
+                        // as a gap left for something that is no longer there.
+                        .padding(horizontal = 4.dp, vertical = 8.dp)
                 )
             },
             navigationIcon = {
@@ -118,7 +123,12 @@ fun WallTopBar(
                 IconButton(onClick = onToggleRoutes, enabled = enabled) {
                     Icon(
                         painter = painterResource(R.drawable.ic_routes),
-                        contentDescription = stringResource(R.string.routes_open)
+                        contentDescription = stringResource(R.string.routes_open),
+                        // Larger than the default. The power button wears a
+                        // ring and the brightness glyph is dense, so a plain
+                        // 24dp icon between them reads as the smaller thing
+                        // rather than the equal one.
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             },

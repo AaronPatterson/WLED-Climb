@@ -433,7 +433,10 @@ private fun RouteTitle(
     ) {
         Text(
             text = routeName ?: stringResource(R.string.routes_unsaved),
-            style = MaterialTheme.typography.titleLarge,
+            // A step above the wall's name in the bar, which is now titleLarge.
+            // The route is the thing being worked on and should stay the
+            // larger of the two.
+            style = MaterialTheme.typography.headlineSmall,
             color = if (routeName == null) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
