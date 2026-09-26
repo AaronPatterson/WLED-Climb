@@ -242,7 +242,7 @@ fun WallScreen(
                                 },
                                 onSave = save,
                                 onRename = { renaming = it },
-                                onSaveAsNew = { savingAsNew = it },
+                                onSaveAsNew = { savingAsNew = openRoute },
                                 onDelete = { deleting = it }
                             )
                         }

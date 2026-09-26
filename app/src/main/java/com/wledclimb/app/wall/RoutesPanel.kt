@@ -58,7 +58,7 @@ fun RoutesPanel(
     onRevert: () -> Unit,
     onSave: () -> Unit,
     onRename: (StoredRoute) -> Unit,
-    onSaveAsNew: (StoredRoute) -> Unit,
+    onSaveAsNew: () -> Unit,
     onDelete: (StoredRoute) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -74,11 +74,30 @@ fun RoutesPanel(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = onNew) {
-                Text(stringResource(R.string.routes_new))
+
+            // All three in the header rather than two here and one buried in a
+            // row menu. Save as new was reachable only by opening the overflow
+            // on the route that happened to be loaded, which is no way to find
+            // out that keeping both versions is even possible.
+            IconButton(onClick = onNew) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_new),
+                    contentDescription = stringResource(R.string.routes_new)
+                )
             }
-            TextButton(onClick = onSave, enabled = canSave) {
-                Text(stringResource(R.string.routes_save))
+            IconButton(onClick = onSave, enabled = canSave) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_save),
+                    contentDescription = stringResource(R.string.routes_save)
+                )
+            }
+            // Only means something with a route open: with none, saving
+            // already makes a new one, so this would be the same button twice.
+            IconButton(onClick = onSaveAsNew, enabled = canSave && selectedRouteId != null) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_save_as),
+                    contentDescription = stringResource(R.string.routes_save_new)
+                )
             }
         }
 
@@ -130,14 +149,6 @@ fun RoutesPanel(
                     stale = route.wallFingerprint != currentFingerprint,
                     onLoad = { onLoad(route.id) },
                     onRename = { onRename(route) },
-                    // Only where it means something: a second copy of a route
-                    // is only worth offering while there are changes that would
-                    // otherwise overwrite the first.
-                    onSaveAsNew = if (route.id == selectedRouteId && modified) {
-                        { onSaveAsNew(route) }
-                    } else {
-                        null
-                    },
                     onDelete = { onDelete(route) }
                 )
             }
@@ -152,7 +163,6 @@ private fun RouteRow(
     stale: Boolean,
     onLoad: () -> Unit,
     onRename: () -> Unit,
-    onSaveAsNew: (() -> Unit)?,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -197,15 +207,6 @@ private fun RouteRow(
                         onRename()
                     }
                 )
-                onSaveAsNew?.let { saveAsNew ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.routes_save_new)) },
-                        onClick = {
-                            menuOpen = false
-                            saveAsNew()
-                        }
-                    )
-                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.routes_delete)) },
                     onClick = {
