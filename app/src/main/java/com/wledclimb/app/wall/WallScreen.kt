@@ -453,6 +453,10 @@ private fun RouteTitle(
     var editing by remember(routeName) { mutableStateOf(false) }
     var draft by remember(routeName) { mutableStateOf(routeName.orEmpty()) }
     val focusRequester = remember { FocusRequester() }
+    // The field reports itself unfocused once on first composition, before the
+    // request below has been granted. Committing on that would close the field
+    // the instant it opened - which is exactly what it did.
+    var hasFocused by remember(routeName) { mutableStateOf(false) }
 
     val commit = {
         val trimmed = draft.trim()
@@ -476,7 +480,13 @@ private fun RouteTitle(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
-                .onFocusChanged { if (!it.isFocused && editing) commit() }
+                .onFocusChanged { focus ->
+                    if (focus.isFocused) {
+                        hasFocused = true
+                    } else if (hasFocused && editing) {
+                        commit()
+                    }
+                }
         )
     } else {
         Row(
