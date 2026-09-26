@@ -1,5 +1,6 @@
 package com.wledclimb.app
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +29,25 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Portrait only where landscape has no room for the wall.
+        //
+        // A phone on its side has perhaps 360dp of height to hold an app bar,
+        // the route's name, its actions, a square grid, the zoom controls and
+        // the colour tray. The grid is what gets squeezed out, and the grid is
+        // the app. A tablet has the height for all of it, and its landscape is
+        // what the list-detail layout was chosen for, so it is left alone.
+        //
+        // Keyed on the smallest width rather than the current one, because
+        // that does not change when the device turns - asking "is this a phone"
+        // rather than "is it sideways right now".
+        //
+        // Blunter than it could be: the honest fix is a landscape layout that
+        // puts the controls beside the wall instead of beneath it. Worth doing
+        // if anyone ever wants to climb with their phone on its side.
+        if (resources.configuration.smallestScreenWidthDp < LARGE_SCREEN_WIDTH_DP) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+        }
+
         // targetSdk 35 draws edge-to-edge whether we ask or not, so opt in
         // explicitly and inset the content rather than letting it slide under
         // the status and navigation bars.
@@ -74,3 +94,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/**
+ * The width at which a device has the height, sideways, to show the wall and
+ * its controls at once. Android's own boundary for a large screen, and the
+ * same one the list-detail layout uses to decide it can show both panes.
+ */
+private const val LARGE_SCREEN_WIDTH_DP = 600
