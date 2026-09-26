@@ -256,15 +256,7 @@ fun WallScreen(
                                 // whatever height is left over, and a title
                                 // centred with it drifted down the screen away
                                 // from the bar it belongs under.
-                                RouteTitle(
-                                    routeName = openRoute?.name,
-                                    modified = state.modified,
-                                    enabled = !state.busy,
-                                    canSave = state.wallId != null,
-                                    onSave = save,
-                                    onSaveAs = { savingAsNew = openRoute },
-                                    onReset = { resetting = true }
-                                )
+                                RouteTitle(routeName = openRoute?.name)
 
                                 Column(
                                     modifier = Modifier
@@ -275,6 +267,10 @@ fun WallScreen(
                                 ) {
                                     ConnectedContent(
                                         state = state,
+                                        routeName = openRoute?.name,
+                                        onSave = save,
+                                        onSaveAs = { savingAsNew = openRoute },
+                                        onReset = { resetting = true },
                                         onHoldTap = onHoldTap,
                                         onColorSelect = onColorSelect,
                                         onClearWall = onClearWall
@@ -420,7 +416,36 @@ private fun ColumnScope.ConnectingContent() {
 }
 
 @Composable
-private fun RouteTitle(
+private fun RouteTitle(routeName: String?) {
+    Text(
+        text = routeName ?: stringResource(R.string.routes_unsaved),
+        // A step above the wall's name in the bar, which is titleLarge. The
+        // route is the thing being worked on and stays the larger of the two.
+        style = MaterialTheme.typography.headlineSmall,
+        color = if (routeName == null) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * Reset, save as and save, sitting on the wall rather than above the name.
+ *
+ * Against the top of the grid because that is what they act on, and pushed
+ * right so they do not make a second column of icons under the ones in the
+ * bar - two clusters in the same corner left it unclear which row owned which.
+ *
+ * All three stay put and grey out. A control that is sometimes absent is
+ * harder to learn than one that is sometimes grey, since there is no way to
+ * notice a button that is not there.
+ */
+@Composable
+private fun RouteActions(
     routeName: String?,
     modified: Boolean,
     enabled: Boolean,
@@ -430,34 +455,10 @@ private fun RouteTitle(
     onReset: () -> Unit
 ) {
     Row(
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = routeName ?: stringResource(R.string.routes_unsaved),
-            // A step above the wall's name in the bar, which is now titleLarge.
-            // The route is the thing being worked on and should stay the
-            // larger of the two.
-            style = MaterialTheme.typography.headlineSmall,
-            color = if (routeName == null) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-
-        // Everything that acts on what is on the wall, beside the name of what
-        // is on the wall. The routes list keeps only the one action that is
-        // about the list itself - starting a new route.
-        //
-        // All three are always here and go grey when they do not apply.
-        // Appearing and disappearing made the row rearrange itself every time
-        // a hold was tapped, and a control that is sometimes absent is harder
-        // to learn than one that is sometimes grey - you cannot notice a
-        // button that is not there.
         IconButton(onClick = onReset, enabled = enabled && modified) {
             Icon(
                 painter = painterResource(R.drawable.ic_reset),
@@ -487,6 +488,10 @@ private fun RouteTitle(
 @Composable
 private fun ColumnScope.ConnectedContent(
     state: WallUiState.Connected,
+    routeName: String?,
+    onSave: () -> Unit,
+    onSaveAs: () -> Unit,
+    onReset: () -> Unit,
     onHoldTap: (segmentIndex: Int) -> Unit,
     onColorSelect: (HoldColor) -> Unit,
     onClearWall: () -> Unit
@@ -494,6 +499,16 @@ private fun ColumnScope.ConnectedContent(
     var scale by remember { mutableFloatStateOf(MIN_GRID_SCALE) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(Size.Zero) }
+
+    RouteActions(
+        routeName = routeName,
+        modified = state.modified,
+        enabled = !state.busy,
+        canSave = state.wallId != null,
+        onSave = onSave,
+        onSaveAs = onSaveAs,
+        onReset = onReset
+    )
 
     WallGrid(
         wall = state.wall,
