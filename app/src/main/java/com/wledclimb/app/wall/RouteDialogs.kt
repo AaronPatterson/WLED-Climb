@@ -6,6 +6,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -39,7 +41,11 @@ fun SaveRouteDialog(
     onDismiss: () -> Unit,
     onSave: (name: String) -> Unit
 ) {
-    var name by remember { mutableStateOf(initialName) }
+    // Selected, not just filled. The name is a suggestion for something new,
+    // so typing should replace it rather than land in the middle of it - and
+    // an empty field, which is the first-save case, selects nothing.
+    var field by remember { mutableStateOf(selectAll(initialName)) }
+    val name = field.text
     val focusRequester = remember { FocusRequester() }
 
     // The dialog exists to collect a name, so the keyboard should be waiting
@@ -51,8 +57,8 @@ fun SaveRouteDialog(
         title = { Text(title) },
         text = {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = field,
+                onValueChange = { field = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.routes_name_label)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -83,7 +89,10 @@ fun RenameRouteDialog(
     onDismiss: () -> Unit,
     onRename: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf(initialName) }
+    // Selected, so typing replaces. The old name is shown to say what it is,
+    // not because it is a starting point to edit in the middle of.
+    var field by remember { mutableStateOf(selectAll(initialName)) }
+    val name = field.text
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -93,8 +102,8 @@ fun RenameRouteDialog(
         title = { Text(stringResource(R.string.routes_rename_title)) },
         text = {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = field,
+                onValueChange = { field = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.routes_name_label)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -223,3 +232,13 @@ fun ResetRouteDialog(
         }
     )
 }
+
+/**
+ * A field value with everything in it selected.
+ *
+ * Shared so the naming dialogs and the title edited in place behave the same
+ * way. An empty name selects nothing, which is the first-save case and wants
+ * no special handling.
+ */
+internal fun selectAll(text: String) =
+    TextFieldValue(text = text, selection = TextRange(0, text.length))

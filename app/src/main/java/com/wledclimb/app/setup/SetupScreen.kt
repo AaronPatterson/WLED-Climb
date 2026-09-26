@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +28,8 @@ import com.wledclimb.app.R
 fun SetupScreen(
     state: SetupUiState,
     onIpInputChange: (String) -> Unit,
-    onTestAndSave: () -> Unit
+    onTestAndSave: () -> Unit,
+    onCancel: (() -> Unit)?
 ) {
     Column(
         modifier = Modifier
@@ -76,6 +78,18 @@ fun SetupScreen(
                 } else {
                     Button(onClick = onTestAndSave, modifier = Modifier.padding(top = 16.dp)) {
                         Text(text = stringResource(R.string.setup_test_and_save))
+                    }
+
+                    // Under the action that this screen exists to perform, not
+                    // above it. Setting an address is what someone came here
+                    // to do; leaving is the way out rather than the offer.
+                    //
+                    // Null on a first run, where leaving would show a wall the
+                    // app has no address for.
+                    onCancel?.let { cancel ->
+                        TextButton(onClick = cancel, modifier = Modifier.padding(top = 8.dp)) {
+                            Text(text = stringResource(R.string.setup_cancel))
+                        }
                     }
                 }
             }

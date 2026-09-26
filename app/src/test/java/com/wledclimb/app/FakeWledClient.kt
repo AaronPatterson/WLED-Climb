@@ -3,6 +3,8 @@ package com.wledclimb.app
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.network.MAX_BRIGHTNESS
 import com.wledclimb.app.network.MIN_USABLE_BRIGHTNESS
+import com.wledclimb.app.grid.Wall
+import com.wledclimb.app.network.wallFrom
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.network.WledIdentity
 import com.wledclimb.app.network.WledStatus
@@ -36,7 +38,7 @@ class FakeWledClient(
 
     /** Every brightness push, as (brightness, on) so the "on" field can be asserted. */
     val setBrightnessCalls = mutableListOf<Pair<Int, Boolean>>()
-    var getConfigCount = 0
+    var getWallCount = 0
         private set
 
     override suspend fun getStatus(): WledStatus {
@@ -64,15 +66,12 @@ class FakeWledClient(
         return WledIdentity(name = name, mac = mac)
     }
 
-    override suspend fun getConfig(): String {
+    override suspend fun getWall(): Wall {
         failWith?.let { throw it }
-        getConfigCount++
-        return config
-    }
-
-    override suspend fun getGaps(): String? {
-        failWith?.let { throw it }
-        return gaps
+        getWallCount++
+        // Built from the same JSON the fixtures always held, so a test that
+        // wants a particular wall still writes it the way WLED would send it.
+        return wallFrom(rawConfig = config, rawGaps = gaps)
     }
 
     /** Every wall state pushed, oldest first. */

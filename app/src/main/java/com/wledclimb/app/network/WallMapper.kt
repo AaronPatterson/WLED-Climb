@@ -1,4 +1,6 @@
-package com.wledclimb.app.grid
+package com.wledclimb.app.network
+
+import com.wledclimb.app.grid.Wall
 
 /**
  * Builds a [Wall] from the controller's panel layout and optional gap file.

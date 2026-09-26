@@ -1,5 +1,6 @@
 package com.wledclimb.app.setup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,7 +17,11 @@ import kotlinx.coroutines.flow.filterIsInstance
  * docs/kotlin-style.md).
  */
 @Composable
-fun SetupRoute(currentUrl: String?, onSetupComplete: (String) -> Unit) {
+fun SetupRoute(
+    currentUrl: String?,
+    onSetupComplete: (String) -> Unit,
+    onCancel: () -> Unit
+) {
     val context = LocalContext.current.applicationContext
     val setupViewModel: SetupViewModel = viewModel(
         factory = LambdaViewModelFactory { SetupViewModel(DataStoreWledSettings(context)) }
@@ -31,10 +36,17 @@ fun SetupRoute(currentUrl: String?, onSetupComplete: (String) -> Unit) {
             .filterIsInstance<SetupUiState.Connected>()
             .collect { connected -> onSetupComplete(connected.ip) }
     }
+    // Back leaves setup rather than the app, for the same reason the button
+    // exists. Only when there is a working address behind it - on a first run
+    // back should still close the app, because there is nothing else to show.
+    val canCancel = currentUrl != null
+    BackHandler(enabled = canCancel, onBack = onCancel)
+
     val setupState by setupViewModel.uiState.collectAsState()
     SetupScreen(
         state = setupState,
         onIpInputChange = setupViewModel::onIpInputChange,
-        onTestAndSave = setupViewModel::testAndSave
+        onTestAndSave = setupViewModel::testAndSave,
+        onCancel = onCancel.takeIf { canCancel }
     )
 }

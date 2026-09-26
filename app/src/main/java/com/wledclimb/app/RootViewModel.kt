@@ -44,4 +44,23 @@ class RootViewModel(private val settings: WledSettings) : ViewModel() {
         val current = _uiState.value as? RootUiState.Ready ?: return
         _uiState.value = RootUiState.NeedsSetup(currentUrl = current.wledBaseUrl)
     }
+
+    /**
+     * Leaves setup without changing anything, returning to the wall that was
+     * already working.
+     *
+     * Setup used to be a one-way door: it is reachable from a menu on the wall
+     * screen, and the only button on it saves. A six-year-old who opens it
+     * finds an address in a text box and no way back - and can edit the
+     * address before working that out. The app is not broken at that point,
+     * but there is no way for them to discover that.
+     *
+     * Does nothing on a first run, where there is no working address behind
+     * the screen and leaving it would show a wall the app cannot reach.
+     */
+    fun onSetupCancelled() {
+        val current = _uiState.value as? RootUiState.NeedsSetup ?: return
+        val previous = current.currentUrl ?: return
+        _uiState.value = RootUiState.Ready(previous)
+    }
 }

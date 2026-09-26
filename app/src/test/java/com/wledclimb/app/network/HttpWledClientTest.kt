@@ -2,6 +2,9 @@ package com.wledclimb.app.network
 
 import com.wledclimb.app.palette.HoldColor
 import kotlinx.coroutines.runBlocking
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.RecordedRequest
+import org.junit.Assert.assertFalse
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.json.JSONObject
@@ -15,6 +18,9 @@ import org.junit.Test
 import java.io.IOException
 
 class HttpWledClientTest {
+
+    private val TWO_BY_TWO =
+        """{"hw":{"led":{"matrix":{"panels":[{"b":false,"r":false,"v":false,"s":false,"x":0,"y":0,"h":2,"w":2}]}}}}"""
 
     private lateinit var server: MockWebServer
 
@@ -144,54 +150,97 @@ class HttpWledClientTest {
         assertEquals(true, sentBody.getBoolean("v"))
     }
 
-    @Test
-    fun `getConfig returns the raw response body on success`() = runBlocking {
-        val rawConfig = """{"hw":{"led":{"total":1}}}"""
-        server.enqueue(MockResponse().setResponseCode(200).setBody(rawConfig))
-
-        assertEquals(rawConfig, client().getConfig())
-
-        val request = server.takeRequest()
-        assertEquals("/json/cfg", request.path)
-    }
-
-    @Test
-    fun `getConfig throws on a non-2xx response`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(404))
-
-        try {
-            client().getConfig()
-            fail("Expected an IOException")
-        } catch (e: IOException) {
-            assertTrue(e.message!!.contains("404"))
+    /**
+     * Answers by path rather than in order.
+     *
+     * getWall asks for the config and the gap file at once, so whichever
+     * arrives first would otherwise be handed whichever response was queued
+     * first - a coin toss that passes locally and fails somewhere else.
+     */
+    private fun serveWall(config: String, gaps: String? = null) {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse = when {
+                request.path?.startsWith("/json/cfg") == true ->
+                    MockResponse().setResponseCode(200).setBody(config)
+                request.path?.startsWith("/2d-gaps.json") == true && gaps != null ->
+                    MockResponse().setResponseCode(200).setBody(gaps)
+                else -> MockResponse().setResponseCode(404)
+            }
         }
     }
 
     @Test
-    fun `getGaps returns the raw body when the file exists`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(200).setBody("[1,1,-1]"))
+    fun `getWall builds the grid from the panel layout`() = runBlocking {
+        serveWall(TWO_BY_TWO)
 
-        assertEquals("[1,1,-1]", client().getGaps())
+        val wall = client().getWall()
 
-        val request = server.takeRequest()
-        assertEquals("/2d-gaps.json", request.path)
+        assertEquals(2, wall.width)
+        assertEquals(2, wall.height)
+        assertEquals(4, wall.holdCount)
     }
 
     @Test
-    fun `getGaps returns null when WLED reports the file doesn't exist`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(404))
+    fun `getWall applies the gap file when the controller has one`() = runBlocking {
+        serveWall(TWO_BY_TWO, gaps = "[1,-1,1,1]")
 
-        assertNull(client().getGaps())
+        val wall = client().getWall()
+
+        assertTrue(wall.hasHoldAt(x = 0, y = 0))
+        assertFalse(wall.hasHoldAt(x = 1, y = 0))
+        assertEquals(3, wall.holdCount)
     }
 
     @Test
-    fun `getGaps also returns null for other non-2xx responses, not just 404`() = runBlocking {
-        // Documents the current, deliberately lenient behavior: any failure to
-        // fetch this optional file is treated as "no gaps" rather than an error,
-        // since the wall's grid is still usable without it.
-        server.enqueue(MockResponse().setResponseCode(500))
+    fun `getWall is fine without a gap file, which is the normal case`() = runBlocking {
+        // WLED serves one only if it was uploaded through its own 2D setup, so
+        // a 404 here means "no gaps", not a problem.
+        serveWall(TWO_BY_TWO)
 
-        assertNull(client().getGaps())
+        assertEquals(4, client().getWall().holdCount)
+    }
+
+    @Test
+    fun `getWall rejects a controller that is not a 2D matrix`() = runBlocking {
+        serveWall("""{"hw":{"led":{"total":30}}}""")
+
+        try {
+            client().getWall()
+            fail("Expected a WledConfigException")
+        } catch (e: WledConfigException) {
+            assertTrue(e.message!!.isNotBlank())
+        }
+        Unit
+    }
+
+    @Test
+    fun `getWall rejects a matrix with no panels`() = runBlocking {
+        // 2D mode with nothing configured in it is not a wall anyone can climb,
+        // and setup depends on finding that out before it saves the address.
+        serveWall("""{"hw":{"led":{"matrix":{"panels":[]}}}}""")
+
+        try {
+            client().getWall()
+            fail("Expected a WledConfigException")
+        } catch (e: WledConfigException) {
+            assertTrue(e.message!!.contains("panels"))
+        }
+        Unit
+    }
+
+    @Test
+    fun `getWall throws when the config cannot be fetched`() = runBlocking {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(404)
+        }
+
+        try {
+            client().getWall()
+            fail("Expected an IOException")
+        } catch (e: IOException) {
+            assertTrue(e.message!!.contains("404"))
+        }
+        Unit
     }
 
     @Test

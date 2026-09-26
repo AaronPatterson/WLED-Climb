@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,7 +78,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
@@ -134,12 +139,43 @@ fun WallScreen(
         if (openRoute == null) saving = true else onSaveRoute(openRoute.name, openRoute.id)
     }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>(
-        initialDestinationHistory = listOf(
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
+    // Where there is room for both panes, the routes list can still be put
+    // away - a wall is worth more width than a list of names, and editing one
+    // is what the extra space is for.
+    //
+    // Done by overriding how many panes the scaffold may show rather than by
+    // navigating: navigating picks which pane is current, and where both fit
+    // that changes nothing. Survives rotation, because turning a tablet is not
+    // a request to bring the list back.
+    var routesCollapsed by rememberSaveable { mutableStateOf(false) }
+    val roomForBoth = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val directive = if (routesCollapsed) {
+        roomForBoth.copy(maxHorizontalPartitions = 1)
+    } else {
+        roomForBoth
+    }
+    // False on a phone, where there was never a second pane to collapse and
+    // the button keeps its original job of moving between them.
+    val showsBothPanes = roomForBoth.maxHorizontalPartitions > 1
+
+    // Keyed on the collapse, which is what makes it take effect at all. The
+    // scaffold has no directive of its own - it reads the navigator's - and the
+    // navigator is remembered without the directive among its keys, so handing
+    // it a new one after it exists changes nothing. Keying here builds a fresh
+    // navigator instead, which is the only way in to a value it will honour.
+    //
+    // Recreating costs the pane back stack, which is why the history below is
+    // seeded rather than accumulated: whichever navigator is in use, back from
+    // the wall reaches the routes and the wall is what opens.
+    val navigator = key(routesCollapsed) {
+        rememberListDetailPaneScaffoldNavigator<Nothing>(
+            scaffoldDirective = directive,
+            initialDestinationHistory = listOf(
+                ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
+                ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
+            )
         )
-    )
+    }
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -163,27 +199,29 @@ fun WallScreen(
                         // already; the bar itself sits outside that, which is
                         // why this has to say so.
                         brightnessOpen = false
-                        scope.launch {
-                            // A toggle, not a one-way trip. The same button
-                            // that covered the wall with the list puts it back,
-                            // so nobody has to know that the system back
-                            // gesture is the way out of a screen they opened
-                            // from the bar.
-                            //
-                            // On a tablet the list never leaves, so both sides
-                            // of this are the same thing and the button does
-                            // nothing visible - which is correct, there being
-                            // nothing to close.
-                            val showingRoutes =
-                                navigator.currentDestination?.pane ==
-                                    ListDetailPaneScaffoldRole.List
-                            navigator.navigateTo(
-                                if (showingRoutes) {
-                                    ListDetailPaneScaffoldRole.Detail
-                                } else {
-                                    ListDetailPaneScaffoldRole.List
-                                }
-                            )
+
+                        if (showsBothPanes) {
+                            // Put the list away, or bring it back. Collapsing
+                            // also makes the wall the current pane, or the
+                            // single pane left would be the list - which is
+                            // hiding the wrong half.
+                            // The rebuilt navigator opens on the wall, so
+                            // collapsing cannot leave the list as the one pane
+                            // that is left.
+                            routesCollapsed = !routesCollapsed
+                        } else {
+                            scope.launch {
+                                val showingRoutes =
+                                    navigator.currentDestination?.pane ==
+                                        ListDetailPaneScaffoldRole.List
+                                navigator.navigateTo(
+                                    if (showingRoutes) {
+                                        ListDetailPaneScaffoldRole.Detail
+                                    } else {
+                                        ListDetailPaneScaffoldRole.List
+                                    }
+                                )
+                            }
                         }
                     },
                 )
@@ -451,7 +489,8 @@ private fun RouteTitle(
     onRename: (String) -> Unit
 ) {
     var editing by remember(routeName) { mutableStateOf(false) }
-    var draft by remember(routeName) { mutableStateOf(routeName.orEmpty()) }
+    // Selected on open, so a rename is one gesture rather than clearing first.
+    var draft by remember(routeName) { mutableStateOf(selectAll(routeName.orEmpty())) }
     val focusRequester = remember { FocusRequester() }
     // The field reports itself unfocused once on first composition, before the
     // request below has been granted. Committing on that would close the field
@@ -459,7 +498,7 @@ private fun RouteTitle(
     var hasFocused by remember(routeName) { mutableStateOf(false) }
 
     val commit = {
-        val trimmed = draft.trim()
+        val trimmed = draft.text.trim()
         if (trimmed.isNotBlank() && trimmed != routeName) onRename(trimmed)
         editing = false
     }
