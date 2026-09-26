@@ -60,6 +60,66 @@ Versions in use, all stable: adaptive, adaptive-layout and adaptive-navigation
 at 1.3.0 - still the current stable line, 1.4.0 being alpha. navigation-suite is
 not used yet, for the reason below.
 
+## The app opens on the wall
+
+`NavigableListDetailPaneScaffold` starts on the list pane unless told
+otherwise, which meant launching into a route picker with the restored route
+hidden behind it - the list covering the answer to the question it was asking.
+
+It now starts on the detail pane with the list seeded behind it in the history,
+so back from the wall reaches the routes rather than leaving the app. That
+satisfies both of the launch requirements above at once: with saved routes the
+last one is already restored and visible, and with none, a blank wall *is*
+dropping straight into creating one.
+
+## Why the routes list is not swiped to
+
+Swiping between the wall and the routes was considered and rejected on a
+concrete conflict rather than on taste: the grid uses `detectTransformGestures`
+for pinch-zoom and **drag to pan**, so a horizontal swipe is already how you
+move around a wall too big for the screen. A gesture cannot mean "pan the wall"
+and "leave the wall" at the same time, and whichever won would be wrong
+sometimes.
+
+Material also reserves swiping for tabs - content within one destination -
+rather than for moving between destinations, and a gesture with nothing on
+screen to advertise it is a poor fit for a six-year-old.
+
+## What the top bar carries, and where
+
+The left of an app bar is navigation. The routes list is the only place this
+bar navigates to, so that is what sits there.
+
+It was a hamburger, which was wrong twice: the icon promises a navigation
+drawer and there is none, and it put the app's settings in the position someone
+reaches for to go somewhere. The settings moved to an overflow menu at the far
+right, which is where Material puts one, leaving the middle of the bar to the
+wall's own controls - brightness and power - and keeping navigation and wall
+controls from sitting shoulder to shoulder as though they were the same kind of
+thing.
+
+## The route manager is a screen, not a picker
+
+It is the list pane of the list-detail layout, which means it is a full screen
+on a phone and sits beside the wall on a tablet. What it has to do:
+
+- **Show each route, not just name it.** A small preview of the lit holds, so a
+  route is recognisable without opening it. The data is already there - a
+  stored route is grid positions and palette slots, and the wall's shape is
+  stored too, so a thumbnail can be drawn with no controller present.
+- **Everything the dialogs do today**: save, save as new, rename, delete,
+  reset, and starting a new route.
+- **Tapping a route opens it on the wall.** Selecting is not a separate step
+  from going to look at it.
+
+Two consequences worth deciding before building it. A preview has to be drawn
+from the *stored* wall shape rather than the connected one, or the list cannot
+be used offline - and a route saved against a different shape should presumably
+preview as it was saved, which is the same diff that phase 17 draws in the
+editor. And a list of previews is a list of small grids, so it wants a fixed
+thumbnail size rather than one scaled per route, or two routes on the same wall
+will not look comparable.
+
 ## Where the wall controls live
 
 Power and brightness sit in a top bar spanning the app, which is what satisfies

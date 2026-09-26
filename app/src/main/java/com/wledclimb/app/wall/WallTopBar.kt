@@ -123,43 +123,20 @@ fun WallTopBar(
                 }
             },
             navigationIcon = {
-                // Everything that is about the app rather than about the wall.
-                // Small now, but it is where configuration grows, and keeping it
-                // out of the content is what lets the screen below be about
-                // routes.
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_menu),
-                        contentDescription = stringResource(R.string.wall_menu)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.wall_change_controller)) },
-                        onClick = {
-                            menuOpen = false
-                            onChangeController()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.about_title)) },
-                        onClick = {
-                            menuOpen = false
-                            aboutOpen = true
-                        }
-                    )
-                }
-            },
-            actions = {
-                // Routes sit next to the wall controls rather than in the
-                // overflow menu: opening a route is the common action, and
-                // the menu is where the rare ones live.
+                // The left of an app bar is where navigation lives, and the
+                // routes list is the only thing this bar navigates to. It used
+                // to be a hamburger, which was wrong twice over: that icon
+                // promises a navigation drawer, and there is none, and it put
+                // the app's settings in the position someone reaches for to go
+                // somewhere.
                 IconButton(onClick = onOpenRoutes, enabled = enabled) {
                     Icon(
                         painter = painterResource(R.drawable.ic_routes),
                         contentDescription = stringResource(R.string.routes_open)
                     )
                 }
+            },
+            actions = {
                 IconButton(
                     onClick = { onBrightnessOpenChange(!brightnessOpen) },
                     enabled = enabled
@@ -204,6 +181,31 @@ fun WallTopBar(
                             modifier = Modifier.size(22.dp)
                         )
                     }
+                }
+
+                // Last, and a different shape from the two beside it: these are
+                // things you do to the wall, this is a menu about the app.
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more),
+                        contentDescription = stringResource(R.string.wall_menu)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.wall_change_controller)) },
+                        onClick = {
+                            menuOpen = false
+                            onChangeController()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.about_title)) },
+                        onClick = {
+                            menuOpen = false
+                            aboutOpen = true
+                        }
+                    )
                 }
             }
         )
