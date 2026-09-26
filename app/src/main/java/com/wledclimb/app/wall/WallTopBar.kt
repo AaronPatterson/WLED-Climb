@@ -109,19 +109,28 @@ fun WallTopBar(
                     // the right. Saving belongs to the route, which is what
                     // this side of the bar is about; power and brightness
                     // belong to the wall.
-                    if (modified) {
-                        FilledTonalIconButton(
-                            onClick = onSave,
-                            enabled = enabled,
-                            modifier = Modifier.padding(end = 4.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_save),
-                                contentDescription = stringResource(
-                                    R.string.routes_save_current
-                                ),
-                                modifier = Modifier.size(24.dp)
-                            )
+                    // The slot is always here, holding a button only when
+                    // there is something to save. Appearing and disappearing
+                    // would slide the names under the finger that just pressed
+                    // it, and the thing that moves into that space is the
+                    // title, which opens the routes - so a second tap would
+                    // land somewhere nobody aimed.
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (modified) {
+                            FilledTonalIconButton(onClick = onSave, enabled = enabled) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_save),
+                                    contentDescription = stringResource(
+                                        R.string.routes_save_current
+                                    ),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
 
