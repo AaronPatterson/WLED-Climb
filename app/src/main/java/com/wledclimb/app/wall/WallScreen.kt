@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.rememberCoroutineScope
@@ -104,7 +105,19 @@ fun WallScreen(
     // the bar whatever height the bar turns out to be.
     var topBarHeight by remember { mutableIntStateOf(0) }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>()
+    // Opens on the wall, not on the list. Launching into a route picker puts a
+    // menu between someone and the thing they opened the app to use - and the
+    // route they were last on has already been restored by the time this shows,
+    // so the list would be covering the answer to the question it asks.
+    //
+    // The list is seeded behind it rather than replaced by it, so back from the
+    // wall reaches the routes on a phone instead of leaving the app.
+    val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>(
+        initialDestinationHistory = listOf(
+            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
+            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
+        )
+    )
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
