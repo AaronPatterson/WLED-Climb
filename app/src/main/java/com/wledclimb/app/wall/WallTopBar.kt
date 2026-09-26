@@ -1,6 +1,7 @@
 package com.wledclimb.app.wall
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +89,22 @@ fun WallTopBar(
                 // Two lines: the wall is which wall, the route is what you are
                 // working on. The route is the larger of the two because it is
                 // the thing that changes, and the one you look up to check.
-                Column {
+                //
+                // The whole block opens the routes, and closes them again, the
+                // same as the button on the left. Naming what is loaded is
+                // already an invitation to ask what else there is, and a title
+                // that answers a tap is a much bigger target than an icon -
+                // which matters for the person this app is for.
+                Column(
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(
+                            enabled = enabled,
+                            onClickLabel = stringResource(R.string.routes_open),
+                            onClick = onToggleRoutes
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
                     Text(
                         text = name,
                         style = MaterialTheme.typography.labelMedium,
