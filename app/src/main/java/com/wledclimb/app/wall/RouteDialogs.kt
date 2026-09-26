@@ -27,9 +27,14 @@ import com.wledclimb.app.R
  * nobody has saved before, or saving the open route as a second one. Saving
  * over a route that already has a name does not come through here, because
  * renaming it is a different intention and has its own action.
+ *
+ * [title] separates those two cases. They collect the same thing and do the
+ * same thing, but arriving at "Save route" after pressing save-as reads as
+ * though the copy had been forgotten about.
  */
 @Composable
 fun SaveRouteDialog(
+    title: String,
     initialName: String,
     onDismiss: () -> Unit,
     onSave: (name: String) -> Unit
@@ -43,7 +48,7 @@ fun SaveRouteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.routes_save_title)) },
+        title = { Text(title) },
         text = {
             OutlinedTextField(
                 value = name,

@@ -57,6 +57,7 @@
     <string name="routes_unavailable">Routes cannot be saved for this wall.</string>
     <string name="routes_wall_changed">The wall has changed since this was saved</string>
     <string name="routes_save_title">Save route</string>
+    <string name="routes_save_as_title">Save as a new route</string>
     <string name="routes_rename_title">Rename route</string>
     <string name="routes_name_label">Name</string>
     <string name="routes_save_new">Save as new</string>

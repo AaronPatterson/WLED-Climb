@@ -325,6 +325,7 @@ fun WallScreen(
 
     if (state is WallUiState.Connected && saving) {
         SaveRouteDialog(
+            title = stringResource(R.string.routes_save_title),
             initialName = "",
             onDismiss = {
                 saving = false
@@ -341,6 +342,7 @@ fun WallScreen(
 
     savingAsNew?.let { route ->
         SaveRouteDialog(
+            title = stringResource(R.string.routes_save_as_title),
             initialName = route.name,
             onDismiss = { savingAsNew = null },
             onSave = { name ->
