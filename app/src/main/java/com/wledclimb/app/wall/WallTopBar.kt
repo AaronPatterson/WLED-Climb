@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wledclimb.app.R
 import com.wledclimb.app.network.MAX_BRIGHTNESS
@@ -136,6 +137,10 @@ fun WallTopBar(
 
                     Column(
                         modifier = Modifier
+                            // Takes what is left after the save slot, and no
+                            // more, so a long name is cut rather than shoving
+                            // the wall controls off the end of the bar.
+                            .weight(1f, fill = false)
                             .clip(MaterialTheme.shapes.small)
                             .clickable(
                                 enabled = enabled,
@@ -144,10 +149,17 @@ fun WallTopBar(
                             )
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
+                        // One line each, cut with an ellipsis. Left to wrap,
+                        // a long route name grew the bar downwards and took
+                        // the height out of the grid - the name of a route is
+                        // worth a line, never two, and least of all at the
+                        // cost of the wall it belongs to.
                         Text(
                             text = name,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = routeName ?: stringResource(R.string.routes_unsaved),
@@ -156,7 +168,9 @@ fun WallTopBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
                                 MaterialTheme.colorScheme.onSurface
-                            }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
