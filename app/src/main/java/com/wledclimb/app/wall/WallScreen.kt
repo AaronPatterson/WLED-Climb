@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -157,13 +158,24 @@ fun WallScreen(
     // the button keeps its original job of moving between them.
     val showsBothPanes = roomForBoth.maxHorizontalPartitions > 1
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>(
-        scaffoldDirective = directive,
-        initialDestinationHistory = listOf(
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
+    // Keyed on the collapse, which is what makes it take effect at all. The
+    // scaffold has no directive of its own - it reads the navigator's - and the
+    // navigator is remembered without the directive among its keys, so handing
+    // it a new one after it exists changes nothing. Keying here builds a fresh
+    // navigator instead, which is the only way in to a value it will honour.
+    //
+    // Recreating costs the pane back stack, which is why the history below is
+    // seeded rather than accumulated: whichever navigator is in use, back from
+    // the wall reaches the routes and the wall is what opens.
+    val navigator = key(routesCollapsed) {
+        rememberListDetailPaneScaffoldNavigator<Nothing>(
+            scaffoldDirective = directive,
+            initialDestinationHistory = listOf(
+                ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
+                ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail)
+            )
         )
-    )
+    }
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -193,12 +205,10 @@ fun WallScreen(
                             // also makes the wall the current pane, or the
                             // single pane left would be the list - which is
                             // hiding the wrong half.
+                            // The rebuilt navigator opens on the wall, so
+                            // collapsing cannot leave the list as the one pane
+                            // that is left.
                             routesCollapsed = !routesCollapsed
-                            if (routesCollapsed) {
-                                scope.launch {
-                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                }
-                            }
                         } else {
                             scope.launch {
                                 val showingRoutes =
