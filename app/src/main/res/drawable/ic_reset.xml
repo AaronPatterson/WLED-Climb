@@ -2,10 +2,13 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:pathData="M5,12 a7,7 0 1,0 2.1,-5"
+    <!-- Tail sweeping back to the left, head pointing where it came from.
+         A full circle read as reload: "do it again" rather than "undo it". -->
+    <path android:pathData="M19,19 C19,11.5 14.5,7.5 8,7.5"
         android:strokeColor="#FF000000" android:strokeWidth="2"
         android:strokeLineCap="round" android:fillColor="#00000000" />
-    <path android:pathData="M4,3 L4,7.5 L8.5,7.5"
+    <path android:pathData="M12,3.5 L7.5,7.5 L12,11.5"
         android:strokeColor="#FF000000" android:strokeWidth="2"
-        android:strokeLineJoin="round" android:strokeLineCap="round" />
+        android:strokeLineJoin="round" android:strokeLineCap="round"
+        android:fillColor="#00000000" />
 </vector>
