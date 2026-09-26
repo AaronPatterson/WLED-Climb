@@ -51,14 +51,14 @@ Two things follow that are easy to get wrong:
   the phone layout, which is correct but means available width is the trigger
   rather than the hardware. The tablet in portrait may land in medium rather than
   expanded, so that breakpoint is a decision to make deliberately.
-- The Compose BOM here is `2024.09.00` and the current release is `2026.09.00`.
-  The adaptive libraries need something far newer, so that upgrade is a
-  prerequisite with its own risk rather than part of the navigation work. Same
-  shape as the AGP upgrade: not scope creep, just a dependency nobody had cause
-  to notice until something needed it.
+- ~~The Compose BOM here is `2024.09.00`...~~ **Resolved, incidentally.** The
+  BOM reached `2026.09.00` for unrelated reasons, so the prerequisite was
+  already satisfied by the time this was built. The adaptive libraries are
+  versioned independently of the BOM and carry explicit versions of their own.
 
-Versions at time of writing, all stable: navigation-suite 1.4.0, adaptive-layout
-1.3.0, adaptive-navigation 1.3.0.
+Versions in use, all stable: adaptive, adaptive-layout and adaptive-navigation
+at 1.3.0 - still the current stable line, 1.4.0 being alpha. navigation-suite is
+not used yet, for the reason below.
 
 ## Where the wall controls live
 

@@ -24,8 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,13 +58,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
 import com.wledclimb.app.storage.StoredRoute
 import com.wledclimb.app.grid.Wall
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun WallScreen(
     state: WallUiState,
@@ -86,7 +91,6 @@ fun WallScreen(
     onDeleteRoute: (Long) -> Unit
 ) {
     var brightnessOpen by remember { mutableStateOf(false) }
-    var routesOpen by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<StoredRoute?>(null) }
     // Held while the "save first?" question is on screen, and run once it is
@@ -100,70 +104,143 @@ fun WallScreen(
     // the bar whatever height the bar turns out to be.
     var topBarHeight by remember { mutableIntStateOf(0) }
 
+    val navigator = rememberListDetailPaneScaffoldNavigator<Nothing>()
+    val scope = rememberCoroutineScope()
+
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Only when connected: with no wall reached there is no name to show,
-        // no brightness to report, and nothing the controls could act on.
-        if (state is WallUiState.Connected) {
-            WallTopBar(
-                modifier = Modifier.onGloballyPositioned { topBarHeight = it.size.height },
-                name = state.name,
-                on = state.on,
-                brightness = state.brightness,
-                enabled = !state.busy,
-                brightnessOpen = brightnessOpen,
-                onBrightnessOpenChange = { brightnessOpen = it },
-                onToggle = onToggle,
-                onBrightnessChange = onBrightnessChange,
-                onChangeController = onChangeController,
-                onOpenRoutes = { routesOpen = true },
-                routeName = routes.firstOrNull { it.id == state.selectedRouteId }?.name,
-                modified = state.modified
-            )
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                // Closes the brightness row on a press anywhere below it, the
-                // way a menu dismisses. Watched on the initial pass and never
-                // consumed, so the press still reaches whatever it landed on -
-                // tapping a hold both paints it and puts the row away, rather
-                // than being swallowed as a dismissal and needing a second tap.
-                .pointerInput(brightnessOpen) {
-                    if (!brightnessOpen) return@pointerInput
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) {
-                                brightnessOpen = false
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (state is WallUiState.Connected) {
+                WallTopBar(
+                    modifier = Modifier.onGloballyPositioned { topBarHeight = it.size.height },
+                    name = state.name,
+                    on = state.on,
+                    brightness = state.brightness,
+                    enabled = !state.busy,
+                    brightnessOpen = brightnessOpen,
+                    onBrightnessOpenChange = { brightnessOpen = it },
+                    onToggle = onToggle,
+                    onBrightnessChange = onBrightnessChange,
+                    onChangeController = onChangeController,
+                    onOpenRoutes = {
+                        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List) }
+                    },
+                    routeName = routes.firstOrNull { it.id == state.selectedRouteId }?.name,
+                    modified = state.modified
+                )
+
+                // The list beside the editor where there is room and one at a
+                // time where there is not, from one implementation - see
+                // docs/navigation.md. On a tablet picking a route stops being a
+                // navigation event at all, because the list never leaves.
+                NavigableListDetailPaneScaffold(
+                    navigator = navigator,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // Closes the brightness row on a press anywhere below
+                        // it, the way a menu dismisses. Watched on the initial
+                        // pass and never consumed, so the press still reaches
+                        // whatever it landed on - tapping a hold both paints it
+                        // and puts the row away, rather than being swallowed as
+                        // a dismissal and needing a second tap.
+                        .pointerInput(brightnessOpen) {
+                            if (!brightnessOpen) return@pointerInput
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (event.type == PointerEventType.Press) {
+                                        brightnessOpen = false
+                                    }
+                                }
+                            }
+                        },
+                    listPane = {
+                        AnimatedPane {
+                            RoutesPanel(
+                                routes = routes,
+                                selectedRouteId = state.selectedRouteId,
+                                currentFingerprint = state.wall.fingerprint,
+                                // No stored wall means nothing for a route to
+                                // belong to. The save action goes quiet rather
+                                // than failing when pressed.
+                                canSave = state.wallId != null,
+                                modified = state.modified,
+                                onLoad = { routeId ->
+                                    val load = {
+                                        onLoadRoute(routeId)
+                                        // Back to the wall on a phone, where
+                                        // the list covered it. On a tablet both
+                                        // panes are already up and this does
+                                        // nothing.
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                        }
+                                        Unit
+                                    }
+                                    if (state.modified) pending = load else load()
+                                },
+                                onRevert = { resetting = true },
+                                onNew = {
+                                    val new = {
+                                        onNewRoute()
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                                        }
+                                        Unit
+                                    }
+                                    if (state.modified) pending = new else new()
+                                },
+                                onSave = { saving = true },
+                                onRename = { renaming = it },
+                                onDelete = { deleting = it }
+                            )
+                        }
+                    },
+                    detailPane = {
+                        AnimatedPane {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                ConnectedContent(
+                                    state = state,
+                                    onHoldTap = onHoldTap,
+                                    onColorSelect = onColorSelect,
+                                    onClearWall = onClearWall
+                                )
                             }
                         }
                     }
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    when (state) {
+                        is WallUiState.Connecting -> ConnectingContent()
+                        is WallUiState.Error ->
+                            ErrorContent(problem = state.problem, onRetry = onRetry)
+                        else -> Unit
+                    }
+                    // The top bar and its menu are absent here, so changing the
+                    // controller has to stay reachable - it is the way out of an
+                    // address that no longer answers.
+                    TextButton(
+                        onClick = onChangeController,
+                        modifier = Modifier.padding(top = 32.dp)
+                    ) {
+                        Text(text = stringResource(R.string.wall_change_controller))
+                    }
                 }
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-        when (state) {
-            is WallUiState.Connecting -> ConnectingContent()
-            is WallUiState.Connected -> ConnectedContent(
-                state = state,
-                onHoldTap = onHoldTap,
-                onColorSelect = onColorSelect,
-                onClearWall = onClearWall
-            )
-            is WallUiState.Error -> ErrorContent(problem = state.problem, onRetry = onRetry)
-        }
-        // Not connected, so the top bar and its menu are absent - changing the
-        // controller has to stay reachable, because it is the way out of an
-        // address that no longer answers.
-        if (state !is WallUiState.Connected) {
-            TextButton(onClick = onChangeController, modifier = Modifier.padding(top = 32.dp)) {
-                Text(text = stringResource(R.string.wall_change_controller))
             }
         }
-        }
-    }
+
         // Drawn over the content, not above it in the layout. Inline, this
         // pushed the grid down while open and let it spring back on close -
         // and since it closes on a tap, aiming at a hold slid the grid up
@@ -179,41 +256,6 @@ fun WallScreen(
         }
     }
 
-    // A sheet for now. navigation.md has this list living permanently beside
-    // the grid on a tablet, which is a change to where RoutesPanel is put
-    // rather than to the panel itself.
-    if (state is WallUiState.Connected && routesOpen) {
-        ModalBottomSheet(onDismissRequest = { routesOpen = false }) {
-            RoutesPanel(
-                routes = routes,
-                selectedRouteId = state.selectedRouteId,
-                currentFingerprint = state.wall.fingerprint,
-                // No stored wall means nothing for a route to belong to. The
-                // save action goes quiet rather than failing when pressed.
-                canSave = state.wallId != null,
-                modified = state.modified,
-                onLoad = { routeId ->
-                    val load = {
-                        routesOpen = false
-                        onLoadRoute(routeId)
-                    }
-                    if (state.modified) pending = load else load()
-                },
-                onRevert = { resetting = true },
-                onNew = {
-                    val new = {
-                        routesOpen = false
-                        onNewRoute()
-                    }
-                    if (state.modified) pending = new else new()
-                },
-                onSave = { saving = true },
-                onRename = { renaming = it },
-                onDelete = { deleting = it }
-            )
-        }
-    }
-
     if (state is WallUiState.Connected && saving) {
         val open = routes.firstOrNull { it.id == state.selectedRouteId }
         SaveRouteDialog(
@@ -225,7 +267,6 @@ fun WallScreen(
             },
             onSave = { name, asNew ->
                 saving = false
-                routesOpen = false
                 onSaveRoute(name, if (asNew) null else open?.id)
                 afterSave?.invoke()
                 afterSave = null
@@ -261,7 +302,6 @@ fun WallScreen(
             onDismiss = { resetting = false },
             onReset = {
                 resetting = false
-                routesOpen = false
                 onRevertRoute()
             }
         )
