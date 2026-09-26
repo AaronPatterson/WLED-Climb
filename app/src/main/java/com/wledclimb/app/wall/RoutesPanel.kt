@@ -3,10 +3,12 @@ package com.wledclimb.app.wall
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DropdownMenu
@@ -161,15 +163,42 @@ private fun RouteRow(
             }
 
             RouteOverflow(menuOpen = menuOpen, onDismiss = { menuOpen = false }, onOpen = { menuOpen = true }) {
+                // Icons and a taller row. Two words in a default menu are a
+                // small target for something as final as deleting a route, and
+                // the glyph is what is actually recognised at a glance.
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routes_rename)) },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.routes_rename),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_rename),
+                            contentDescription = null
+                        )
+                    },
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                     onClick = {
                         menuOpen = false
                         onRename()
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.routes_delete)) },
+                    text = {
+                        Text(
+                            text = stringResource(R.string.routes_delete),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_delete),
+                            contentDescription = null
+                        )
+                    },
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                     onClick = {
                         menuOpen = false
                         onDelete()
@@ -192,7 +221,10 @@ private fun RouteOverflow(
         IconButton(onClick = onOpen) {
             Icon(
                 painter = painterResource(R.drawable.ic_more),
-                contentDescription = stringResource(R.string.routes_more)
+                contentDescription = stringResource(R.string.routes_more),
+                // Matches the routes icon in the bar, which was bumped for the
+                // same reason - a default glyph reads as the smaller thing.
+                modifier = Modifier.size(28.dp)
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = onDismiss) { content() }
