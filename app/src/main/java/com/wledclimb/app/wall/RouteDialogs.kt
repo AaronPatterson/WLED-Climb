@@ -1,6 +1,12 @@
 package com.wledclimb.app.wall
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,6 +35,11 @@ fun SaveRouteDialog(
     onSave: (name: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
+    val focusRequester = remember { FocusRequester() }
+
+    // The dialog exists to collect a name, so the keyboard should be waiting
+    // rather than costing a tap on the only field there is.
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -39,7 +50,15 @@ fun SaveRouteDialog(
                 onValueChange = { name = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.routes_name_label)) },
-                modifier = Modifier.fillMaxWidth()
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                // Done saves, so a name can be typed and committed without
+                // reaching back up to the button.
+                keyboardActions = KeyboardActions(
+                    onDone = { if (name.isNotBlank()) onSave(name.trim()) }
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
         },
         confirmButton = {
@@ -60,6 +79,9 @@ fun RenameRouteDialog(
     onRename: (String) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -70,7 +92,13 @@ fun RenameRouteDialog(
                 onValueChange = { name = it },
                 singleLine = true,
                 label = { Text(stringResource(R.string.routes_name_label)) },
-                modifier = Modifier.fillMaxWidth()
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { if (name.isNotBlank()) onRename(name.trim()) }
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
         },
         confirmButton = {
