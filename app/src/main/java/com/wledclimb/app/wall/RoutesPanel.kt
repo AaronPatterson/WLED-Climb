@@ -58,6 +58,7 @@ fun RoutesPanel(
     onRevert: () -> Unit,
     onSave: () -> Unit,
     onRename: (StoredRoute) -> Unit,
+    onSaveAsNew: (StoredRoute) -> Unit,
     onDelete: (StoredRoute) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -129,6 +130,14 @@ fun RoutesPanel(
                     stale = route.wallFingerprint != currentFingerprint,
                     onLoad = { onLoad(route.id) },
                     onRename = { onRename(route) },
+                    // Only where it means something: a second copy of a route
+                    // is only worth offering while there are changes that would
+                    // otherwise overwrite the first.
+                    onSaveAsNew = if (route.id == selectedRouteId && modified) {
+                        { onSaveAsNew(route) }
+                    } else {
+                        null
+                    },
                     onDelete = { onDelete(route) }
                 )
             }
@@ -143,6 +152,7 @@ private fun RouteRow(
     stale: Boolean,
     onLoad: () -> Unit,
     onRename: () -> Unit,
+    onSaveAsNew: (() -> Unit)?,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -187,6 +197,15 @@ private fun RouteRow(
                         onRename()
                     }
                 )
+                onSaveAsNew?.let { saveAsNew ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.routes_save_new)) },
+                        onClick = {
+                            menuOpen = false
+                            saveAsNew()
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.routes_delete)) },
                     onClick = {

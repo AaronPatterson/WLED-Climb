@@ -100,6 +100,7 @@ fun WallScreen(
     var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
     var afterSave by remember { mutableStateOf<(() -> Unit)?>(null) }
     var resetting by remember { mutableStateOf(false) }
+    var savingAsNew by remember { mutableStateOf<StoredRoute?>(null) }
     var deleting by remember { mutableStateOf<StoredRoute?>(null) }
     // Measured rather than assumed, so the floating brightness row sits under
     // the bar whatever height the bar turns out to be.
@@ -229,8 +230,23 @@ fun WallScreen(
                                     }
                                     if (state.modified) pending = new else new()
                                 },
-                                onSave = { saving = true },
+                                onSave = {
+                                    // Saving a route that already has a name
+                                    // just saves it. Offering the name here
+                                    // made every save a rename as well, which
+                                    // is a different intention and has its own
+                                    // action in the row menu.
+                                    val open = routes.firstOrNull {
+                                        it.id == state.selectedRouteId
+                                    }
+                                    if (open == null) {
+                                        saving = true
+                                    } else {
+                                        onSaveRoute(open.name, open.id)
+                                    }
+                                },
                                 onRename = { renaming = it },
+                                onSaveAsNew = { savingAsNew = it },
                                 onDelete = { deleting = it }
                             )
                         }
@@ -298,19 +314,28 @@ fun WallScreen(
     }
 
     if (state is WallUiState.Connected && saving) {
-        val open = routes.firstOrNull { it.id == state.selectedRouteId }
         SaveRouteDialog(
-            initialName = open?.name.orEmpty(),
-            canUpdate = open != null,
+            initialName = "",
             onDismiss = {
                 saving = false
                 afterSave = null
             },
-            onSave = { name, asNew ->
+            onSave = { name ->
                 saving = false
-                onSaveRoute(name, if (asNew) null else open?.id)
+                onSaveRoute(name, null)
                 afterSave?.invoke()
                 afterSave = null
+            }
+        )
+    }
+
+    savingAsNew?.let { route ->
+        SaveRouteDialog(
+            initialName = route.name,
+            onDismiss = { savingAsNew = null },
+            onSave = { name ->
+                savingAsNew = null
+                onSaveRoute(name, null)
             }
         )
     }
