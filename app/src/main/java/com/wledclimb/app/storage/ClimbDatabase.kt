@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.wledclimb.app.BuildConfig
 
 /**
  * Saved walls and the routes drawn on them.
@@ -55,6 +56,24 @@ abstract class ClimbDatabase : RoomDatabase() {
                 context.applicationContext,
                 ClimbDatabase::class.java,
                 "climb.db"
-            ).build()
+            )
+                .apply {
+                    // Debug builds throw the database away when the schema
+                    // changes instead of refusing to open. On a development
+                    // phone the schema moves whenever a branch is rebuilt, and
+                    // Room's answer to a mismatch is to fail the open - which
+                    // this app reports, correctly but unhelpfully, as routes
+                    // not being saveable for this wall. That has now cost two
+                    // rounds of confusion, and it is never the interesting
+                    // failure on a device whose data is a handful of test
+                    // routes.
+                    //
+                    // Release builds keep the refusal. Silently deleting
+                    // someone's routes because a version number was missed is
+                    // a far worse outcome than an app that will not start
+                    // saving until the migration is written.
+                    if (BuildConfig.DEBUG) fallbackToDestructiveMigration(dropAllTables = true)
+                }
+                .build()
     }
 }
