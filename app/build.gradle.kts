@@ -80,8 +80,8 @@ android {
         // code, so this only has to move when a build actually goes out.
         // Forgetting shows up as an update that silently doesn't apply, which
         // is why versionName is on screen in the app.
-        versionCode = 8
-        versionName = "0.9.0"
+        versionCode = 9
+        versionName = "0.10.0-beta.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -206,6 +206,14 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+
+    // List beside editor on a tablet, list then editor on a phone, from one
+    // implementation - see docs/navigation.md. Versioned independently of the
+    // Compose BOM, so these carry explicit versions; 1.3.0 is the current
+    // stable line, 1.4.0 being alpha.
+    implementation("androidx.compose.material3.adaptive:adaptive:1.3.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.3.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.3.0")
 
     // Simple HTTP client for talking to the WLED JSON API
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

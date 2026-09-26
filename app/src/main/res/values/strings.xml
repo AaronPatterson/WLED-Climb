@@ -43,6 +43,7 @@
     <string name="routes_reset_untitled_body">Nothing has been saved yet, so this clears the wall.</string>
     <string name="routes_unsaved">Unsaved route</string>
     <string name="routes_unsaved_changes">Unsaved changes</string>
+    <string name="routes_save_current">Save this route</string>
     <string name="routes_discard_title">Save changes to %1$s?</string>
     <string name="routes_discard_untitled_title">Save this route?</string>
     <string name="routes_discard_body">You have changes that have not been saved.</string>
@@ -56,6 +57,7 @@
     <string name="routes_unavailable">Routes cannot be saved for this wall.</string>
     <string name="routes_wall_changed">The wall has changed since this was saved</string>
     <string name="routes_save_title">Save route</string>
+    <string name="routes_save_as_title">Save as a new route</string>
     <string name="routes_rename_title">Rename route</string>
     <string name="routes_name_label">Name</string>
     <string name="routes_save_new">Save as new</string>

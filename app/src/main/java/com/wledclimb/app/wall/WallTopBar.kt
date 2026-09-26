@@ -1,11 +1,13 @@
 package com.wledclimb.app.wall
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wledclimb.app.R
 import com.wledclimb.app.network.MAX_BRIGHTNESS
@@ -70,9 +74,7 @@ fun WallTopBar(
     onToggle: () -> Unit,
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
-    onOpenRoutes: () -> Unit,
-    routeName: String?,
-    modified: Boolean
+    onToggleRoutes: () -> Unit,
 ) {
     val unsavedDescription = stringResource(R.string.routes_unsaved_changes)
     var menuOpen by remember { mutableStateOf(false) }
@@ -85,81 +87,53 @@ fun WallTopBar(
     TopAppBar(
         modifier = modifier,
         title = {
-                // Two lines: the wall is which wall, the route is what you are
-                // working on. The route is the larger of the two because it is
-                // the thing that changes, and the one you look up to check.
-                Column {
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = routeName ?: stringResource(R.string.routes_unsaved),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (routeName == null) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
+                // The wall's name, and only that. The route moved down onto
+                // the screen it belongs to, where a full-width row has room
+                // for a name this bar was truncating at about twenty
+                // characters.
+                //
+                // Still opens the routes on a tap, because a title that
+                // answers one is a far bigger target than the icon beside it.
+                Text(
+                    text = name,
+                    // titleLarge is what Material gives an app bar title. It
+                    // was a size down from that to leave room for the route
+                    // name beside it, and the route name has since moved out.
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(
+                            enabled = enabled,
+                            onClickLabel = stringResource(R.string.routes_open),
+                            onClick = onToggleRoutes
                         )
-                        if (modified) {
-                            // A dot rather than a word: it sits beside a name
-                            // that can already be long, and "there is unsaved
-                            // work" is a fact that does not need a sentence.
-                            Box(
-                                modifier = Modifier
-                                    .padding(start = 6.dp)
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .semantics {
-                                        contentDescription = unsavedDescription
-                                    }
-                            )
-                        }
-                    }
-                }
+                        // Only enough to give the ripple a shape. More read
+                        // as a gap left for something that is no longer there.
+                        .padding(horizontal = 4.dp, vertical = 8.dp)
+                )
             },
             navigationIcon = {
-                // Everything that is about the app rather than about the wall.
-                // Small now, but it is where configuration grows, and keeping it
-                // out of the content is what lets the screen below be about
-                // routes.
-                IconButton(onClick = { menuOpen = true }) {
+                // The left of an app bar is where navigation lives, and the
+                // routes list is the only thing this bar navigates to. It used
+                // to be a hamburger, which was wrong twice over: that icon
+                // promises a navigation drawer, and there is none, and it put
+                // the app's settings in the position someone reaches for to go
+                // somewhere.
+                IconButton(onClick = onToggleRoutes, enabled = enabled) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_menu),
-                        contentDescription = stringResource(R.string.wall_menu)
-                    )
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.wall_change_controller)) },
-                        onClick = {
-                            menuOpen = false
-                            onChangeController()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.about_title)) },
-                        onClick = {
-                            menuOpen = false
-                            aboutOpen = true
-                        }
+                        painter = painterResource(R.drawable.ic_routes),
+                        contentDescription = stringResource(R.string.routes_open),
+                        // Larger than the default. The power button wears a
+                        // ring and the brightness glyph is dense, so a plain
+                        // 24dp icon between them reads as the smaller thing
+                        // rather than the equal one.
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             },
             actions = {
-                // Routes sit next to the wall controls rather than in the
-                // overflow menu: opening a route is the common action, and
-                // the menu is where the rare ones live.
-                IconButton(onClick = onOpenRoutes, enabled = enabled) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_routes),
-                        contentDescription = stringResource(R.string.routes_open)
-                    )
-                }
                 IconButton(
                     onClick = { onBrightnessOpenChange(!brightnessOpen) },
                     enabled = enabled
@@ -204,6 +178,60 @@ fun WallTopBar(
                             modifier = Modifier.size(22.dp)
                         )
                     }
+                }
+
+                // Last, and a different shape from the two beside it: these are
+                // things you do to the wall, this is a menu about the app.
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more),
+                        contentDescription = stringResource(R.string.wall_menu),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // Same treatment as the row menu in the routes panel: a
+                    // glyph, a larger label and a taller row. A menu opened
+                    // rarely is exactly the one worth being able to read
+                    // without stopping to aim.
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.wall_change_controller),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_controller),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        onClick = {
+                            menuOpen = false
+                            onChangeController()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.about_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_about),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        onClick = {
+                            menuOpen = false
+                            aboutOpen = true
+                        }
+                    )
                 }
             }
         )
