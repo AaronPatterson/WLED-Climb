@@ -7,7 +7,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,7 +38,21 @@ class MainActivity : ComponentActivity() {
                 // The Surface fills the display so its background reaches the
                 // screen edges; only the content inside is inset.
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.safeDrawingPadding()) {
+                    // System bars and the cutout, deliberately not the
+                    // keyboard. safeDrawing includes the IME, so every screen
+                    // shrank to make room for it - on the wall that meant the
+                    // grid collapsing while a name was typed, which is the one
+                    // thing worth still being able to see.
+                    //
+                    // Screens whose field would end up underneath the keyboard
+                    // ask for that room themselves, which is only the setup
+                    // screen: its field is in the middle of an otherwise empty
+                    // page, where the wall's is at the top.
+                    Box(
+                        modifier = Modifier.windowInsetsPadding(
+                            WindowInsets.systemBars.union(WindowInsets.displayCutout)
+                        )
+                    ) {
                         val rootState by rootViewModel.uiState.collectAsState()
                         when (val state = rootState) {
                             is RootUiState.Loading -> LoadingScreen()

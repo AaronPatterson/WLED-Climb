@@ -2,6 +2,7 @@ package com.wledclimb.app.setup
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +32,10 @@ fun SetupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // Asked for here rather than at the root: this field sits in the
+            // middle of an otherwise empty page, so the keyboard would cover
+            // the thing being typed into.
+            .imePadding()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
