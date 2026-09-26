@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -69,6 +70,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
@@ -256,7 +265,13 @@ fun WallScreen(
                                 // whatever height is left over, and a title
                                 // centred with it drifted down the screen away
                                 // from the bar it belongs under.
-                                RouteTitle(routeName = openRoute?.name)
+                                RouteTitle(
+                                    routeName = openRoute?.name,
+                                    enabled = !state.busy,
+                                    onRename = { newName ->
+                                        openRoute?.let { onRenameRoute(it.id, newName) }
+                                    }
+                                )
 
                                 Column(
                                     modifier = Modifier
@@ -417,22 +432,99 @@ private fun ColumnScope.ConnectingContent() {
     )
 }
 
+/**
+ * The open route's name, renameable in place.
+ *
+ * Tapping it turns it into a field rather than opening a dialog: renaming is
+ * a small edit to something already on screen, and a dialog to change one word
+ * is heavier than the change. The pencil beside it is what says so - an
+ * editable title that looks exactly like a label is a feature nobody finds.
+ *
+ * Committing on the way out as well as on Done, because a title edited in
+ * place is expected to keep what was typed when you look away from it. There
+ * is nothing to lose by being wrong: renaming again is the same gesture.
+ */
 @Composable
-private fun RouteTitle(routeName: String?) {
-    Text(
-        text = routeName ?: stringResource(R.string.routes_unsaved),
-        // A step above the wall's name in the bar, which is titleLarge. The
-        // route is the thing being worked on and stays the larger of the two.
-        style = MaterialTheme.typography.headlineSmall,
-        color = if (routeName == null) {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth()
-    )
+private fun RouteTitle(
+    routeName: String?,
+    enabled: Boolean,
+    onRename: (String) -> Unit
+) {
+    var editing by remember(routeName) { mutableStateOf(false) }
+    var draft by remember(routeName) { mutableStateOf(routeName.orEmpty()) }
+    val focusRequester = remember { FocusRequester() }
+
+    val commit = {
+        val trimmed = draft.trim()
+        if (trimmed.isNotBlank() && trimmed != routeName) onRename(trimmed)
+        editing = false
+    }
+
+    if (editing) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+        BasicTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { commit() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { if (!it.isFocused && editing) commit() }
+        )
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (routeName != null && enabled) {
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(
+                                onClickLabel = stringResource(R.string.routes_rename),
+                                onClick = { editing = true }
+                            )
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
+            Text(
+                text = routeName ?: stringResource(R.string.routes_unsaved),
+                // A step above the wall's name in the bar, which is titleLarge.
+                // The route is the thing being worked on and stays the larger.
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (routeName == null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+
+            // Only with a route to rename. Work nobody has saved has no name
+            // to change - it gets one by being saved.
+            if (routeName != null) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_rename),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(18.dp)
+                )
+            }
+        }
+    }
 }
 
 /**
