@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
 
                             is RootUiState.NeedsSetup -> SetupRoute(
                                 currentUrl = state.currentUrl,
-                                onSetupComplete = rootViewModel::onSetupComplete
+                                onSetupComplete = rootViewModel::onSetupComplete,
+                                onCancel = rootViewModel::onSetupCancelled
                             )
 
                             is RootUiState.Ready -> WallRoute(
