@@ -260,6 +260,7 @@ fun WallScreen(
                                     routeName = openRoute?.name,
                                     modified = state.modified,
                                     enabled = !state.busy,
+                                    canSave = state.wallId != null,
                                     onSave = save,
                                     onSaveAs = { savingAsNew = openRoute },
                                     onReset = { resetting = true }
@@ -423,6 +424,7 @@ private fun RouteTitle(
     routeName: String?,
     modified: Boolean,
     enabled: Boolean,
+    canSave: Boolean,
     onSave: () -> Unit,
     onSaveAs: () -> Unit,
     onReset: () -> Unit
@@ -451,38 +453,33 @@ private fun RouteTitle(
         // is on the wall. The routes list keeps only the one action that is
         // about the list itself - starting a new route.
         //
-        // No slot is reserved for any of these. The name is weighted, so it
-        // starts in the same place whatever appears to its right; only the
-        // width it has to truncate into changes.
-        if (modified) {
-            IconButton(onClick = onReset, enabled = enabled) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_reset),
-                    contentDescription = stringResource(R.string.routes_reset)
-                )
-            }
+        // All three are always here and go grey when they do not apply.
+        // Appearing and disappearing made the row rearrange itself every time
+        // a hold was tapped, and a control that is sometimes absent is harder
+        // to learn than one that is sometimes grey - you cannot notice a
+        // button that is not there.
+        IconButton(onClick = onReset, enabled = enabled && modified) {
+            Icon(
+                painter = painterResource(R.drawable.ic_reset),
+                contentDescription = stringResource(R.string.routes_reset)
+            )
         }
 
         // Copying a route to work from is worth offering before anything has
-        // been changed, so this does not wait for edits the way the other two
-        // do - only for there being a route to copy.
-        if (routeName != null) {
-            IconButton(onClick = onSaveAs, enabled = enabled) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_save_as),
-                    contentDescription = stringResource(R.string.routes_save_new)
-                )
-            }
+        // been changed, so this waits only for there being a route to copy.
+        IconButton(onClick = onSaveAs, enabled = enabled && canSave && routeName != null) {
+            Icon(
+                painter = painterResource(R.drawable.ic_save_as),
+                contentDescription = stringResource(R.string.routes_save_new)
+            )
         }
 
-        if (modified) {
-            FilledTonalIconButton(onClick = onSave, enabled = enabled) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_save),
-                    contentDescription = stringResource(R.string.routes_save_current),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+        FilledTonalIconButton(onClick = onSave, enabled = enabled && canSave && modified) {
+            Icon(
+                painter = painterResource(R.drawable.ic_save),
+                contentDescription = stringResource(R.string.routes_save_current),
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
