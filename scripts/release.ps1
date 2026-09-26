@@ -180,7 +180,9 @@ Copy-Item $apkPath $asset -Force
 
 if ($DryRun) {
     Step 'Dry run - stopping before anything permanent'
-    Write-Host "  Would commit:  Release $VersionName"
+    $kind = if ($Prerelease) { 'Prerelease' } else { 'Release' }
+    Write-Host "  Would commit:  $kind $VersionName"
+    if ($Prerelease) { Write-Host "  Would push to: $branch (not main)" }
     Write-Host "  Would tag:     $tag"
     Write-Host "  Would publish: $(Split-Path $asset -Leaf)"
     Write-Host "  Play bundle:   $aabPath"

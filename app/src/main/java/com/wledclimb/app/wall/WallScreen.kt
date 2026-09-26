@@ -222,11 +222,12 @@ fun WallScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Exhaustive without an else: the branch above narrows
+                    // state to everything that is not Connected.
                     when (state) {
                         is WallUiState.Connecting -> ConnectingContent()
                         is WallUiState.Error ->
                             ErrorContent(problem = state.problem, onRetry = onRetry)
-                        else -> Unit
                     }
                     // The top bar and its menu are absent here, so changing the
                     // controller has to stay reachable - it is the way out of an
