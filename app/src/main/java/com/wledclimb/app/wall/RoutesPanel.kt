@@ -85,7 +85,15 @@ fun RoutesPanel(
                     contentDescription = stringResource(R.string.routes_new)
                 )
             }
-            IconButton(onClick = onSave, enabled = canSave) {
+            // Off when there is nothing to save, which is not only tidiness:
+            // routes are listed newest-changed first and saving always stamps
+            // updatedAt, so a redundant save would rewrite identical holds and
+            // jump the route to the top of the list. A button that does
+            // nothing, visibly.
+            //
+            // It also stops a blank wall being saved as a route, since nothing
+            // drawn is nothing changed.
+            IconButton(onClick = onSave, enabled = canSave && modified) {
                 Icon(
                     painter = painterResource(R.drawable.ic_save),
                     contentDescription = stringResource(R.string.routes_save)
@@ -93,6 +101,10 @@ fun RoutesPanel(
             }
             // Only means something with a route open: with none, saving
             // already makes a new one, so this would be the same button twice.
+            //
+            // Deliberately not gated on there being changes. Copying a route
+            // to work from is a reason to press this, and the copy is worth
+            // making whether or not the original has been touched yet.
             IconButton(onClick = onSaveAsNew, enabled = canSave && selectedRouteId != null) {
                 Icon(
                     painter = painterResource(R.drawable.ic_save_as),
