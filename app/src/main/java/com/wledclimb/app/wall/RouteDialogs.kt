@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,7 +45,9 @@ fun SaveRouteDialog(
     // Selected, not just filled. The name is a suggestion for something new,
     // so typing should replace it rather than land in the middle of it - and
     // an empty field, which is the first-save case, selects nothing.
-    var field by remember { mutableStateOf(selectAll(initialName)) }
+    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(selectAll(initialName))
+    }
     val name = field.text
     val focusRequester = remember { FocusRequester() }
 
@@ -91,7 +94,9 @@ fun RenameRouteDialog(
 ) {
     // Selected, so typing replaces. The old name is shown to say what it is,
     // not because it is a starting point to edit in the middle of.
-    var field by remember { mutableStateOf(selectAll(initialName)) }
+    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(selectAll(initialName))
+    }
     val name = field.text
     val focusRequester = remember { FocusRequester() }
 

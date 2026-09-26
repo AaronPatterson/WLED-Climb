@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wledclimb.app.R
@@ -52,9 +54,11 @@ internal fun RouteTitle(
     enabled: Boolean,
     onRename: (String) -> Unit
 ) {
-    var editing by remember(routeName) { mutableStateOf(false) }
+    var editing by rememberSaveable(routeName) { mutableStateOf(false) }
     // Selected on open, so a rename is one gesture rather than clearing first.
-    var draft by remember(routeName) { mutableStateOf(selectAll(routeName.orEmpty())) }
+    var draft by rememberSaveable(routeName, stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(selectAll(routeName.orEmpty()))
+    }
     val focusRequester = remember { FocusRequester() }
     // The field reports itself unfocused once on first composition, before the
     // request below has been granted. Committing on that would close the field
