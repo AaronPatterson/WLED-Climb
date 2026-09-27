@@ -8,6 +8,22 @@ Android app for controlling a climbing wall with LED-lit holds (clear holds, LED
 - [`docs/design.md`](docs/design.md) — best practices for this project, architecture (Kotlin + Jetpack Compose, MVVM, WLED JSON API), screens, and the incremental build plan.
 - [`docs/kotlin-style.md`](docs/kotlin-style.md) — Kotlin coding conventions for this codebase: naming, state modeling, ViewModel/coroutine patterns, file organization.
 
+## Licence
+
+[GPL-3.0](LICENSE). Use it, change it, run it on your own wall, build something
+else out of it. If you distribute a modified version you have to publish your
+source under the same terms, which is the point: the one thing this is meant to
+prevent is someone taking the work closed and selling it.
+
+Early revisions of `WallMapper` contained a Kotlin port of WLED's
+`WS2812FX::setUpMatrix()`. That code has been removed - per-pixel commands
+address grid positions, so the strip indices it computed were read by nothing -
+but it remains in the git history. WLED is licensed under the
+[EUPL v1.2](https://github.com/wled/WLED/blob/main/LICENSE), which is
+compatible with the GPL, so that history sits comfortably under this licence.
+It would not have under a permissive one, which is part of why this licence was
+chosen.
+
 ## Status
 
 **Phase 0 (walking skeleton) complete**: the app connects to a hardcoded WLED controller IP and turns the wall on/off via WLED's `/json/state` endpoint, verified against a real controller.
