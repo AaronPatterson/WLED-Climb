@@ -124,32 +124,8 @@ class WallViewModel(
      */
     private var savedHolds: String = ""
 
-    /**
-     * The device's auto-apply setting, kept here as well as in state because
-     * a connect builds its state from nothing and has to know it.
-     */
-    private var autoApply: Boolean = true
-
     init {
-        // Collected before connecting, so a setting already to hand is in
-        // the first connected state rather than arriving just after it.
-        viewModelScope.launch {
-            try {
-                settings.autoApply.collect { enabled ->
-                    autoApply = enabled
-                    (_uiState.value as? WallUiState.Ready)?.let {
-                        _uiState.value = it.copy(autoApply = enabled)
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Stays on, which is how the app behaved before it was a
-                // choice. Not worth taking the wall away over.
-                Log.e(TAG, "reading the auto-apply setting failed", e)
-            }
-        }
-        refresh()
+        start()
         viewModelScope.launch {
             for (target in brightnessRequests) {
                 applyBrightness(target)
@@ -188,23 +164,101 @@ class WallViewModel(
     }
 
     /**
-     * Shows the stored wall if there is not one on screen already, then asks
-     * the controller.
+     * Launch: the stored wall first, then the controller - unless this device
+     * was left paused, in which case the controller is not asked at all.
      *
      * The stored wall comes first so that a controller out of reach costs
      * nothing but the controller: the grid, the routes and whatever was being
      * built are all on this device.
      *
-     * Also what the power button does while the controller is out of reach,
-     * and the only way the app asks again - see [ControllerState.Offline].
+     * Nothing is sent to the wall on the way through. It may be showing
+     * someone else's route by now, and opening the app is not a request to
+     * replace it.
      */
-    fun refresh() {
-        // A second tap while the first is still being answered would only
-        // stack another round of timeouts behind it.
-        if ((_uiState.value as? WallUiState.Ready)?.controller is ControllerState.Connecting) return
+    private fun start() {
         viewModelScope.launch {
+            openStoredWall()
+            val current = _uiState.value as? WallUiState.Ready
+            if (current != null && pausedBefore()) {
+                _uiState.value = current.copy(controller = ControllerState.Paused)
+                return@launch
+            }
+            connect(sendOnArrival = false)
+        }
+    }
+
+    /** Whether the device was paused when it was last used. */
+    private suspend fun pausedBefore(): Boolean =
+        try {
+            settings.paused.first()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Connecting is how the app behaved before pausing existed, and
+            // launching still sends nothing.
+            Log.e(TAG, "reading the paused setting failed", e)
+            false
+        }
+
+    /**
+     * Asks the controller again: the power button while the wall is out of
+     * reach or paused, and the retry when there is no wall to show at all.
+     * The only way the app asks again - see [ControllerState.Offline].
+     *
+     * Unlike launching, what is on screen is sent once the controller
+     * answers. Someone has deliberately come back to the wall, and coming
+     * back means the wall shows what they see.
+     */
+    fun reconnect() {
+        when ((_uiState.value as? WallUiState.Ready)?.controller) {
+            // A second tap while the first is still being answered would only
+            // stack another round of timeouts behind it.
+            ControllerState.Connecting -> return
+            // Nothing to come back from. The button switches power then.
+            is ControllerState.Online -> return
+            else -> Unit
+        }
+        // Straight away rather than once the pause is cleared below: that
+        // write suspends, and a second tap landing in between would find the
+        // wall still paused and ask twice.
+        (_uiState.value as? WallUiState.Ready)?.let {
+            _uiState.value = it.copy(controller = ControllerState.Connecting)
+        }
+        viewModelScope.launch {
+            savePaused(false)
             if (_uiState.value !is WallUiState.Ready) openStoredWall()
-            connect()
+            connect(sendOnArrival = true)
+        }
+    }
+
+    /**
+     * Leaves the controller alone until [reconnect], with it in reach or not,
+     * so a route can be built while someone climbs the one on the wall.
+     *
+     * Not while connecting: the answer would arrive after the pause and
+     * undo it.
+     */
+    fun pause() {
+        val current = _uiState.value as? WallUiState.Ready ?: return
+        when (current.controller) {
+            is ControllerState.Online, is ControllerState.Offline -> Unit
+            ControllerState.Connecting, ControllerState.Paused -> return
+        }
+        _uiState.value = current.copy(controller = ControllerState.Paused)
+        viewModelScope.launch { savePaused(true) }
+    }
+
+    /**
+     * Failing to persist costs only what happens after a relaunch, so it is
+     * logged rather than surfaced.
+     */
+    private suspend fun savePaused(paused: Boolean) {
+        try {
+            settings.savePaused(paused)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "saving the paused setting failed", e)
         }
     }
 
@@ -238,8 +292,7 @@ class WallViewModel(
             name = stored.name,
             wall = wall,
             controller = ControllerState.Connecting,
-            wallId = stored.id,
-            autoApply = autoApply
+            wallId = stored.id
         )
         restoreWorkingState(stored)
     }
@@ -252,10 +305,9 @@ class WallViewModel(
         val online: ControllerState.Online
     )
 
-    private suspend fun connect() {
-        // Nothing sent before now is known to be on the wall any more.
+    private suspend fun connect(sendOnArrival: Boolean) {
         (_uiState.value as? WallUiState.Ready)?.let {
-            _uiState.value = it.copy(controller = ControllerState.Connecting, applied = false)
+            _uiState.value = it.copy(controller = ControllerState.Connecting)
         }
         val arrival = try {
             // The three reads don't depend on each other, and run against a
@@ -288,7 +340,7 @@ class WallViewModel(
             }
             return
         }
-        arrive(arrival)
+        arrive(arrival, sendOnArrival)
     }
 
     /**
@@ -299,13 +351,14 @@ class WallViewModel(
      * taken, because the controller is the authority on it - and the holds
      * are carried across it by position, since a changed width moves every
      * segment index. Holds the wall no longer has drop off the screen; the
-     * draft on disk keeps them until the next edit.
+     * draft on disk keeps them until the next edit. With [send], the work is
+     * then put on the wall - see [reconnect].
      *
      * Any other wall - none on screen, or the controller at this address
      * turning out to be a different one - is opened as it was left, the same
      * as at launch.
      */
-    private suspend fun arrive(arrival: Arrival) {
+    private suspend fun arrive(arrival: Arrival, send: Boolean) {
         val stored = arrival.stored
         val current = _uiState.value as? WallUiState.Ready
         if (current != null && stored != null && current.wallId == stored.id) {
@@ -324,6 +377,9 @@ class WallViewModel(
                 controller = arrival.online
             )
             rememberWall(stored)
+            // Nothing on screen is not a route. Sending it would clear the
+            // wall of whatever someone is climbing, for no route at all.
+            if (send && holds.isNotEmpty()) push(arrival.wall, holds, "reconnect()")
             return
         }
 
@@ -332,8 +388,7 @@ class WallViewModel(
             name = arrival.name,
             wall = arrival.wall,
             controller = arrival.online,
-            wallId = stored?.id,
-            autoApply = autoApply
+            wallId = stored?.id
         )
         stored?.let {
             rememberWall(it)
@@ -390,12 +445,10 @@ class WallViewModel(
      * through - the route on disk stays as it was, and the screen comes back
      * looking like the edit was made a moment ago.
      *
-     * Shown, not pushed - with auto-apply on or off. The wall may be showing
-     * someone else's route by now, and opening the app is not a request to
-     * replace it; the app cannot read the wall back to find out, since WLED
-     * answers /json/live with 501. The screen says so by not counting as
-     * applied, and the next deliberate change - an apply, or with auto-apply
-     * on any edit - puts it on the wall.
+     * Shown, not pushed. The wall may be showing someone else's route by now,
+     * and opening the app is not a request to replace it; the app cannot read
+     * the wall back to find out, since WLED answers /json/live with 501. The
+     * next change - a tapped hold, a route opened - puts it on the wall.
      */
     private suspend fun restoreWorkingState(stored: StoredWall) {
         val current = _uiState.value as? WallUiState.Ready ?: return
@@ -409,7 +462,7 @@ class WallViewModel(
 
         _uiState.value = current.copy(selectedRouteId = route?.id)
         val latest = _uiState.value as? WallUiState.Ready ?: return
-        show(latest, RouteHolds.parseSegments(working, latest.wall), applied = false)
+        show(latest, RouteHolds.parseSegments(working, latest.wall))
     }
 
     /** Picks the colour the next tapped hold will be painted in. */
@@ -513,14 +566,7 @@ class WallViewModel(
             savedHolds = routes.byId(routeId)?.holds.orEmpty()
             select(routeId)
             val latest = _uiState.value as? WallUiState.Ready ?: return@launch
-            // Opening the route already open is going back to it - a reset -
-            // and an applied route stays applied through its own reset.
-            showAndPush(
-                latest,
-                holds,
-                "loadRoute($routeId)",
-                continuesWork = routeId == current.selectedRouteId
-            )
+            showAndPush(latest, holds, "loadRoute($routeId)")
         }
     }
 
@@ -532,16 +578,16 @@ class WallViewModel(
      * route first, so what follows is new work rather than the old route
      * emptied.
      */
-    fun newRoute() = startBlank("newRoute()", continuesWork = false)
+    fun newRoute() = startBlank("newRoute()")
 
-    private fun startBlank(description: String, continuesWork: Boolean) {
+    private fun startBlank(description: String) {
         if (_uiState.value !is WallUiState.Ready) return
 
         viewModelScope.launch {
             savedHolds = ""
             select(null)
             val latest = _uiState.value as? WallUiState.Ready ?: return@launch
-            showAndPush(latest, emptyMap(), description, continuesWork)
+            showAndPush(latest, emptyMap(), description)
         }
     }
 
@@ -552,15 +598,14 @@ class WallViewModel(
      * clears - a draft belonging to no route reverts to no route. That is the
      * same thing [newRoute] does, and deliberately the same code: "undo my
      * edits" and "start again" are the same action when there is nothing
-     * behind the edits. The one difference is that a reset is still the same
-     * work, so an applied wall follows it where a new route would not.
+     * behind the edits.
      */
     fun revertRoute() {
         val current = _uiState.value as? WallUiState.Ready ?: return
         if (!current.modified) return
 
         val open = current.selectedRouteId
-        if (open == null) startBlank("revertRoute()", continuesWork = true) else loadRoute(open)
+        if (open == null) startBlank("revertRoute()") else loadRoute(open)
     }
 
     private suspend fun clearDraft() {
@@ -715,14 +760,9 @@ class WallViewModel(
     }
 
     /**
-     * Shows [holds] straight away and, when the wall is following this
-     * device, pushes them in the background.
-     *
-     * The wall follows when the controller is reachable and auto-apply is on,
-     * or when the work on screen was
-     * applied and this is more of the same work - [continuesWork] false is
-     * opening a different route or starting a new one, which leaves the wall
-     * showing what was applied until the new work is applied in turn.
+     * Shows [holds] straight away and, while the controller is online, pushes
+     * them in the background. Paused or out of reach, the edit is kept on
+     * this device and goes up with the next change once back.
      *
      * The grid updates before the request completes: on a local network the
      * round trip is short, but waiting for it would make every tap feel
@@ -733,27 +773,20 @@ class WallViewModel(
     private fun showAndPush(
         current: WallUiState.Ready,
         holds: Map<Int, HoldColor>,
-        description: String,
-        continuesWork: Boolean = true
+        description: String
     ) {
-        val live = current.controller is ControllerState.Online &&
-            (current.autoApply || (continuesWork && current.applied))
-        show(current, holds, applied = live)
-        if (live) push(current.wall, holds, description)
+        show(current, holds)
+        if (current.controller is ControllerState.Online) push(current.wall, holds, description)
     }
 
     /**
      * Puts [holds] on screen and records them as the draft, without going
      * near the wall.
      */
-    private fun show(
-        current: WallUiState.Ready,
-        holds: Map<Int, HoldColor>,
-        applied: Boolean
-    ) {
+    private fun show(current: WallUiState.Ready, holds: Map<Int, HoldColor>) {
         val asStored = RouteHolds.serializeSegments(holds, current.wall)
         val modified = asStored != savedHolds
-        _uiState.value = current.copy(litHolds = holds, modified = modified, applied = applied)
+        _uiState.value = current.copy(litHolds = holds, modified = modified)
 
         // Every hold change passes through here, so this is the one place the
         // draft has to be written. Unsaved work then survives the app being
@@ -790,38 +823,10 @@ class WallViewModel(
      */
     private fun goOffline(e: Exception) {
         val current = _uiState.value as? WallUiState.Ready ?: return
-        _uiState.value = current.copy(
-            controller = ControllerState.Offline(problemFor(e)),
-            applied = false
-        )
-    }
-
-    /**
-     * Puts what is on screen on the wall, and has the wall follow edits to it
-     * from here on.
-     *
-     * Allowed when already applied. The app cannot see the wall, so it cannot
-     * know whether another device has put something else there since - and
-     * applying again is how to take it back.
-     */
-    fun applyRoute() {
-        val current = _uiState.value as? WallUiState.Ready ?: return
-        if (current.controller !is ControllerState.Online) return
-        _uiState.value = current.copy(applied = true)
-        push(current.wall, current.litHolds, "applyRoute()")
-    }
-
-    /** Records this device's auto-apply choice; state follows the setting. */
-    fun setAutoApply(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                settings.saveAutoApply(enabled)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "saving the auto-apply setting failed", e)
-            }
-        }
+        // A request sent just before pausing can fail just after it. The
+        // pause was asked for; the failure only confirms it.
+        if (current.controller is ControllerState.Paused) return
+        _uiState.value = current.copy(controller = ControllerState.Offline(problemFor(e)))
     }
 
     /**
@@ -869,19 +874,16 @@ class WallViewModel(
                 // WLED unfreezes every segment when it's switched on (see the
                 // "unfreeze all segments when turning on" branch in json.cpp),
                 // which drops the per-pixel route from the wall while the app
-                // still shows it. Push the route again so the two agree - when
-                // the route is the wall's to show. Unapplied work on this
-                // device is not, and with auto-apply on, switching the wall on
-                // is as good a reason to apply as any edit.
-                val following = latest.applied || latest.autoApply
-                val repush = status.on && following && latest.litHolds.isNotEmpty()
-                if (repush) {
+                // still shows it. Push the route again so the two agree.
+                if (status.on && latest.litHolds.isNotEmpty()) {
                     client.setHoldColors(pixelCount = latest.wall.segmentSize, lit = latest.litHolds.toHex())
                 }
                 val settled = _uiState.value as? WallUiState.Ready ?: return@launch
+                // Paused while this was in flight: the pause was asked for
+                // last, and wins.
+                if (settled.controller !is ControllerState.Online) return@launch
                 _uiState.value = settled.copy(
-                    controller = ControllerState.Online(on = status.on, brightness = status.brightness),
-                    applied = settled.applied || repush
+                    controller = ControllerState.Online(on = status.on, brightness = status.brightness)
                 )
             } catch (e: CancellationException) {
                 throw e

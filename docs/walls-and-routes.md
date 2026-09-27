@@ -12,8 +12,8 @@ once, see [wall-sharing.md](wall-sharing.md).
   offline editing possible, and it means a new route can be created with no
   controller present.
 - Selecting a route does not apply it to the wall, even when the wall is on.
-  Applying is a deliberate action - unless the device has auto-apply on (see
-  below), which is how a child's device is meant to be set up.
+  Applying is a deliberate action. *Relaxed - see Applying below: online, every
+  change goes to the wall, and working offline is how to build without it.*
 - The stored wall has to be checked against the real one on reconnect, because it
   can change - a new gap file, a resized matrix.
 - A wall changing must not silently destroy routes built against the old layout.
@@ -46,7 +46,7 @@ fall back on: a first run, with no controller answering.
 When the controller answers again:
 
 - **The same wall** keeps the work on screen, which is newer than anything
-  stored. Nothing is pushed - see Applying below. If its shape changed while
+  stored, and is sent to the wall - see Applying below. If its shape changed while
   away, the holds on screen are carried across by position rather than by
   segment index, which a new width would scramble.
 - **A different wall** - another controller given the address - opens as it
@@ -55,40 +55,41 @@ When the controller answers again:
 A failed push, toggle or connect marks the controller `Offline` and keeps the
 grid; it used to replace the screen with an error.
 
-**Applying becomes explicit.** Every hold tap used to push the whole route to
-the controller. Edit locally, apply deliberately is a different model, and it is
-the one that makes offline editing coherent.
+**Applying was going to become explicit, and did not.** Edit locally, apply
+deliberately was the model offline editing seemed to need. It was built, with an
+Apply button and a per-device auto-apply setting, and replaced before release by
+something simpler - see the next section.
 
 ## Applying
 
-Built ahead of offline editing, because it answers the question offline raises
-first: what an edit means when it has not reached the wall.
+Online, every change goes to the wall: a tapped hold lights, and opening a route
+puts it up. That is the experience a six-year-old needs, and it is the same on
+every device.
 
-- **Apply** puts what is on screen on the wall, and from then on the wall
-  *follows* edits to that work. The tap-a-hold-and-it-lights feel survives, once
-  someone has said the wall is theirs.
-- The wall stops following when the work changes to something else: another
-  route opened, or a new one started. The applied route stays on the wall while
-  the next is built. A reset is not different work, so the wall follows it back.
-- **Opening the app never pushes.** The draft and last route come back on
+What building a route while someone climbs needs instead is a way to stop
+talking to the controller: **working offline**, or pausing. A long press on the
+power button, or "Work offline" in the menu, leaves the controller alone with it
+in reach. Everything offline allows works, and nothing reaches the wall - not an
+edit, not power, not brightness. Tapping the power button goes back online.
+
+- **Coming back sends what is on screen.** Reconnecting, from a pause or from
+  the controller having been out of reach, is always a deliberate tap, and
+  someone who has come back to the wall wants it to show what they see. With
+  nothing on screen, nothing is sent: that is not a route, and sending it would
+  clear the wall of whatever someone is climbing.
+- **Opening the app sends nothing.** The draft and last route come back on
   screen, not on the wall. The app cannot read the wall back (`/json/live`
   answers 501), so it cannot tell whether someone else's route is on it now,
-  and launching is not a request to replace one. The screen shows the route as
-  not applied, which is true.
-- Apply stays pressable once applied. There is no way to see that another
-  device has since put something else up, and applying again is how to take the
-  wall back.
+  and launching is not a request to replace one. The first change sends the
+  whole route.
+- **A pause survives the app being closed.** It is persisted, and a paused
+  device opens its stored wall without asking the controller at all. A
+  relaunch that reconnected would put the half-built route up at the next tap,
+  which is the one thing pausing is for preventing.
 
-**Auto-apply** is a per-device setting, on unless turned off, from the menu.
-With it on, every change is as good as applied: tapped holds light, and opening
-a route puts it on the wall - which relaxes the requirement above, deliberately,
-for the device a six-year-old holds. With it off, the rules above apply. It is
-per device rather than per wall because it describes who is holding the device:
-the case it exists for is an adult building the next route while a child climbs
-the one already applied.
-
-Auto-apply does not extend to opening the app, for the same reason as above:
-the first edit or route opened puts the whole route up, not the launch.
+This relaxes the requirement above that selecting a route does not apply it -
+deliberately, since a child's device wants exactly that, and the adult's device
+has pausing for the case the requirement was protecting.
 
 ## Fingerprinting
 

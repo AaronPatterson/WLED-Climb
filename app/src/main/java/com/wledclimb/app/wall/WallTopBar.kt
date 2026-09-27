@@ -72,13 +72,12 @@ fun WallTopBar(
     brightnessOpen: Boolean,
     onBrightnessOpenChange: (Boolean) -> Unit,
     onToggle: () -> Unit,
-    /** Asks the controller again after it was found out of reach. */
+    /** Asks the controller again, after it was out of reach or paused. */
     onReconnect: () -> Unit,
+    /** Leaves the controller alone until [onReconnect]. */
+    onPause: () -> Unit,
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
-    /** Whether edits on this device go straight to the wall. */
-    autoApply: Boolean,
-    onAutoApplyChange: (Boolean) -> Unit,
     onToggleRoutes: () -> Unit,
     /** False when this wall could not be stored, so it has no routes to move. */
     canBackupRoutes: Boolean,
@@ -91,6 +90,7 @@ fun WallTopBar(
     // Power and brightness are questions for the controller, and have no
     // answer while it is being asked or cannot be reached.
     val online = controller as? ControllerState.Online
+    val paused = controller == ControllerState.Paused
     var menuOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     val backup = rememberRouteBackup(
@@ -166,7 +166,8 @@ fun WallTopBar(
                     controller = controller,
                     enabled = enabled,
                     onToggle = onToggle,
-                    onReconnect = onReconnect
+                    onReconnect = onReconnect,
+                    onPause = onPause
                 )
 
                 // Last, and a different shape from the two beside it: these are
@@ -230,37 +231,42 @@ fun WallTopBar(
                     // These act on the app rather than on the routes.
                     HorizontalDivider()
 
-                    // A setting for whoever holds this device, not for the
-                    // wall - so it is here, one tap from the wall, rather than
-                    // under configuration beside the controller address.
+                    // The same as a long press on the power button, which
+                    // has nothing on screen to say it exists. This is where
+                    // someone looking for it will find it, and a menu item is
+                    // an ordinary action to a screen reader where a long
+                    // press is not.
                     DropdownMenuItem(
                         text = {
                             Text(
-                                text = stringResource(R.string.wall_auto_apply),
+                                text = stringResource(R.string.wall_work_offline),
                                 style = MaterialTheme.typography.titleMedium
                             )
                         },
                         leadingIcon = {
                             Icon(
-                                painter = painterResource(R.drawable.ic_auto_apply),
+                                painter = painterResource(R.drawable.ic_pause),
                                 contentDescription = null
                             )
                         },
                         trailingIcon = {
                             // Display only: the row is the control, and a
                             // second target inside it would toggle twice.
-                            Checkbox(checked = autoApply, onCheckedChange = null)
+                            Checkbox(checked = paused, onCheckedChange = null)
                         },
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         // The checkbox has no handler, so it reports no
                         // state of its own; the row says it instead.
                         modifier = Modifier.semantics {
                             role = Role.Checkbox
-                            toggleableState = ToggleableState(autoApply)
+                            toggleableState = ToggleableState(paused)
                         },
+                        // An answer on its way would undo the pause - see
+                        // WallViewModel.pause.
+                        enabled = controller != ControllerState.Connecting,
                         onClick = {
                             menuOpen = false
-                            onAutoApplyChange(!autoApply)
+                            if (paused) onReconnect() else onPause()
                         }
                     )
 

@@ -8,12 +8,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class FakeWledSettings(
     initialIp: String? = null,
     initialWallId: Long? = null,
-    initialAutoApply: Boolean = true
+    initialPaused: Boolean = false
 ) : WledSettings {
 
     private val saved = MutableStateFlow(initialIp)
     private val savedWall = MutableStateFlow(initialWallId)
-    private val savedAutoApply = MutableStateFlow(initialAutoApply)
+    private val savedPaused = MutableStateFlow(initialPaused)
 
     override val wledIp: Flow<String?> = saved
 
@@ -33,11 +33,12 @@ class FakeWledSettings(
         savedWall.value = id
     }
 
-    override val autoApply: Flow<Boolean> = savedAutoApply
+    override val paused: Flow<Boolean> = savedPaused
 
-    val autoApplyEnabled: Boolean get() = savedAutoApply.value
+    /** Whether pausing is persisted - what the next launch will find. */
+    val isPaused: Boolean get() = savedPaused.value
 
-    override suspend fun saveAutoApply(enabled: Boolean) {
-        savedAutoApply.value = enabled
+    override suspend fun savePaused(paused: Boolean) {
+        savedPaused.value = paused
     }
 }

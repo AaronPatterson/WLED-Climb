@@ -43,11 +43,11 @@ class WallOfflineTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     /** Storage that outlives any one ViewModel - the app being reopened. */
-    private class Stores(autoApply: Boolean = true) {
+    private class Stores {
         val client = FakeWledClient(on = true)
         val wallDao = InMemoryWallDao()
         val routeDao = InMemoryRouteDao()
-        val settings = FakeWledSettings(initialAutoApply = autoApply)
+        val settings = FakeWledSettings()
 
         fun open() = WallViewModel(
             client = client,
@@ -102,7 +102,6 @@ class WallOfflineTest {
 
         assertEquals(mapOf(0 to HoldColor.Red, 3 to HoldColor.Red), ready(viewModel).litHolds)
         assertTrue(ready(viewModel).modified)
-        assertFalse(ready(viewModel).applied)
     }
 
     @Test
@@ -118,9 +117,7 @@ class WallOfflineTest {
 
         assertEquals(mapOf(2 to HoldColor.Red), ready(viewModel).litHolds)
         assertEquals("0,1:0", stores.wallDao.byId(wallId)?.draftHolds)
-        // Auto-apply is on, and there is still nothing to apply to.
         assertEquals(pushes, stores.client.pushedHolds.size)
-        assertFalse(ready(viewModel).applied)
         assertEquals(unreachable, ready(viewModel).controller)
     }
 
@@ -179,7 +176,6 @@ class WallOfflineTest {
         runCurrent()
         val before = ready(viewModel)
 
-        viewModel.applyRoute()
         viewModel.toggleWall()
         viewModel.setBrightness(200)
         runCurrent()
@@ -212,7 +208,7 @@ class WallOfflineTest {
         assertEquals(unreachable, ready(viewModel).controller)
 
         stores.client.failWith = null
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
 
         assertTrue(ready(viewModel).controller is ControllerState.Online)
@@ -261,10 +257,10 @@ class WallOfflineTest {
         holding = true
         val asked = stores.client.getWallCount
 
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
         assertEquals(ControllerState.Connecting, ready(viewModel).controller)
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
         gate.complete(Unit)
         runCurrent()
@@ -274,9 +270,9 @@ class WallOfflineTest {
     }
 
     @Test
-    fun `reconnecting keeps the work on screen and does not push it`() = runTest {
-        // The wall may be in use. Coming back is not a request to replace
-        // what is on it.
+    fun `reconnecting puts the work on screen on the wall`() = runTest {
+        // Reconnecting is a deliberate tap, and coming back to the wall means
+        // the wall shows what is on screen.
         val stores = Stores()
         stores.reachedOnceThenLost()
         val viewModel = stores.open()
@@ -284,36 +280,55 @@ class WallOfflineTest {
         viewModel.toggleHold(segmentIndex = 1)
         viewModel.toggleHold(segmentIndex = 2)
         runCurrent()
-        val pushes = stores.client.pushedHolds.size
 
         stores.client.failWith = null
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
 
         val state = ready(viewModel)
         assertTrue(state.controller is ControllerState.Online)
         assertEquals(mapOf(1 to HoldColor.Red, 2 to HoldColor.Red), state.litHolds)
-        assertFalse(state.applied)
+        assertEquals(mapOf(1 to "FF0000", 2 to "FF0000"), stores.client.pushedHolds.last())
+    }
+
+    @Test
+    fun `reconnecting with nothing on screen leaves the wall alone`() = runTest {
+        // Nothing on screen is not a route, and sending it would clear the
+        // wall of whatever someone is climbing.
+        val stores = Stores()
+        stores.reachedOnceThenLost()
+        val viewModel = stores.open()
+        runCurrent()
+        val pushes = stores.client.pushedHolds.size
+
+        stores.client.failWith = null
+        viewModel.reconnect()
+        runCurrent()
+
+        assertTrue(ready(viewModel).controller is ControllerState.Online)
         assertEquals(pushes, stores.client.pushedHolds.size)
     }
 
     @Test
-    fun `after reconnecting with auto-apply on, the next edit puts the whole route up`() = runTest {
-        val stores = Stores(autoApply = true)
-        stores.reachedOnceThenLost()
-        val viewModel = stores.open()
-        runCurrent()
-        viewModel.toggleHold(segmentIndex = 1)
-        runCurrent()
-        stores.client.failWith = null
-        viewModel.refresh()
-        runCurrent()
+    fun `launching with the controller in reach sends nothing`() = runTest {
+        // Unlike reconnecting, nobody asked for anything: the wall may be
+        // showing someone else's route, and opening the app is not a request
+        // to replace it. The first change sends the whole route.
+        val stores = Stores()
+        stores.open().apply {
+            runCurrent()
+            toggleHold(segmentIndex = 0)
+            runCurrent()
+        }
+        val pushes = stores.client.pushedHolds.size
 
-        viewModel.toggleHold(segmentIndex = 2)
+        val reopened = stores.open()
         runCurrent()
+        assertEquals(pushes, stores.client.pushedHolds.size)
 
-        assertTrue(ready(viewModel).applied)
-        assertEquals(mapOf(1 to "FF0000", 2 to "FF0000"), stores.client.pushedHolds.last())
+        reopened.toggleHold(segmentIndex = 3)
+        runCurrent()
+        assertEquals(mapOf(0 to "FF0000", 3 to "FF0000"), stores.client.pushedHolds.last())
     }
 
     @Test
@@ -330,7 +345,7 @@ class WallOfflineTest {
         stores.client.failWith = null
         stores.client.mac = "a1b2c3d4e5f6"
         stores.client.name = "Another wall"
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
 
         val state = ready(viewModel)
@@ -358,7 +373,7 @@ class WallOfflineTest {
                 {"b":false,"r":false,"v":false,"s":false,"x":0,"y":0,"h":2,"w":3}
             ]}}}}
         """
-        viewModel.refresh()
+        viewModel.reconnect()
         runCurrent()
 
         val state = ready(viewModel)
