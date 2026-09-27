@@ -1,0 +1,50 @@
+name: CI
+
+# Every pull request, whatever it targets - the branches in this repo are
+# stacked, so a PR based on another PR needs checking just as much as one
+# based on main.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to the same branch makes the first run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test and lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Matches the JDK this is developed against. AGP and Gradle are both
+          # fussy about this, and an older one here would find problems that
+          # nobody has locally, or miss ones everybody does.
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Deliberately not assembleRelease: signing credentials live outside the
+      # repo and the build is meant to fail loudly without them. Nothing here
+      # needs a signed artifact to know whether the code is sound.
+      - name: Build, test and lint
+        run: ./gradlew test lintDebug assembleDebug --no-daemon
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 7
