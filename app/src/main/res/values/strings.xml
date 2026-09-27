@@ -22,6 +22,11 @@
     <string name="wall_error_not_wled">The controller answered, but isn\'t set up as a 2D matrix in WLED.</string>
     <string name="wall_error_unidentifiable">The controller answered but reported no MAC address, so the app cannot tell which wall it is. Saved routes need one.</string>
     <string name="wall_retry">Retry</string>
+    <!-- Puts the route on screen onto the wall. Short: it sits beside three icons. -->
+    <string name="wall_apply">Light it up</string>
+    <!-- Shown in place of wall_apply once the wall is showing the route. -->
+    <string name="wall_applied">On the wall</string>
+    <string name="wall_auto_apply">Apply changes automatically</string>
 
     <!-- Hold colours -->
     <string name="color_red">Red</string>

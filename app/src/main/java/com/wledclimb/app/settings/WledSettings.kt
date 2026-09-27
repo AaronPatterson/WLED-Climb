@@ -35,4 +35,17 @@ interface WledSettings {
     val lastWallId: Flow<Long?>
 
     suspend fun saveLastWallId(id: Long?)
+
+    /**
+     * Whether edits go straight to the wall, or wait on this device until
+     * they are applied. On unless turned off.
+     *
+     * Per device rather than per wall, because it describes who holds the
+     * device, not the wall: a child's tablet wants a tapped hold to light up,
+     * and an adult building the next route while someone climbs the current
+     * one wants the wall left alone until they say so.
+     */
+    val autoApply: Flow<Boolean>
+
+    suspend fun saveAutoApply(enabled: Boolean)
 }
