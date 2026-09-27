@@ -233,7 +233,7 @@ First install on a device that currently has a debug build needs an uninstall fi
 }
 
 Step "$(if ($Prerelease) { 'Prereleased' } else { 'Released' }) $VersionName"
-Write-Host "  https://github.com/AaronPatterson/WLED-Climbing-Wall/releases/tag/$tag"
+Write-Host "  https://github.com/AaronPatterson/WLED-Climb/releases/tag/$tag"
 
 # The bundle is deliberately not attached to the GitHub release. Nothing can
 # install an AAB directly - it is an upload format that Play turns into
