@@ -59,7 +59,10 @@ internal fun RouteTitle(
     // thing being edited and two routes may share one, so keying on it meant
     // the field could carry over between routes and reset itself mid-rename.
     var editing by rememberSaveable(routeId) { mutableStateOf(false) }
-    // Selected on open, so a rename is one gesture rather than clearing first.
+    // Holds what is being typed, so it survives a rotation mid-rename. The
+    // initial value here only covers being restored into an open field - the
+    // value that matters is set when the field opens, because this block does
+    // not re-run when the name changes under an unchanged id.
     var draft by rememberSaveable(routeId, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(selectAll(routeName.orEmpty()))
     }
@@ -123,7 +126,19 @@ internal fun RouteTitle(
                             .clip(MaterialTheme.shapes.small)
                             .clickable(
                                 onClickLabel = stringResource(R.string.routes_rename),
-                                onClick = { editing = true }
+                                onClick = {
+                                    // Seeded here, at the moment the field
+                                    // opens, rather than by a key on the
+                                    // remember below. A rename changes the
+                                    // name without changing the id, so a key
+                                    // on the id never re-runs and the field
+                                    // reopens showing the name from before the
+                                    // last rename. Reading it here cannot go
+                                    // stale, because there is nothing between
+                                    // this and the field appearing.
+                                    draft = selectAll(routeName.orEmpty())
+                                    editing = true
+                                }
                             )
                     } else {
                         Modifier
