@@ -1,5 +1,6 @@
 package com.wledclimb.app
 
+import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -28,6 +29,12 @@ class MainActivity : ComponentActivity() {
         LambdaViewModelFactory { RootViewModel(DataStoreWledSettings(applicationContext)) }
     }
 
+    // Lint is right that locking orientation is usually wrong, and it is
+    // suppressed rather than obeyed: the check cannot see that this only
+    // applies below the width where the layout has room, or that the
+    // alternative on a phone is a wall too small to tap. Revisit it with a
+    // landscape layout, not by unlocking.
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         // Portrait only where landscape has no room for the wall.
         //

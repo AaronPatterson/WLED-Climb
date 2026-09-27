@@ -13,8 +13,6 @@
 
     <!-- Wall control -->
     <string name="wall_connecting">Connecting to the wall…</string>
-    <string name="wall_is_on">Wall is ON</string>
-    <string name="wall_is_off">Wall is OFF</string>
     <string name="wall_turn_on">Turn wall on</string>
     <string name="wall_turn_off">Turn wall off</string>
     <string name="wall_change_controller">Change controller</string>
@@ -62,7 +60,6 @@
     <string name="routes_rename_title">Rename route</string>
     <string name="routes_name_label">Name</string>
     <string name="routes_save_new">Save as new</string>
-    <string name="routes_update">Update</string>
     <string name="routes_cancel">Cancel</string>
     <string name="routes_delete_title">Delete %1$s?</string>
     <string name="routes_delete_body">The route is removed. The wall stays lit as it is.</string>
@@ -73,7 +70,12 @@
 
     <string name="wall_brightness">Brightness</string>
     <string name="wall_brightness_percent">%1$d%%</string>
-    <string name="wall_brightness_description">Brightness %1$d percent</string>
+    <!-- A plural because other languages inflect the unit even where English
+         does not, and a screen reader saying it is the one place it shows. -->
+    <plurals name="wall_brightness_description">
+        <item quantity="one">Brightness %1$d percent</item>
+        <item quantity="other">Brightness %1$d percent</item>
+    </plurals>
     <string name="wall_menu">Menu</string>
 
     <!-- About -->
@@ -83,11 +85,13 @@
 
     <!-- Build identity -->
     <string name="wall_version">Version %1$s</string>
-    <string name="wall_privacy_policy">Privacy</string>
 
     <!-- Accessibility -->
     <string name="wall_loading_description">Loading</string>
-    <string name="wall_grid_description">Wall layout: %1$d holds across a %2$d by %3$d grid</string>
+    <plurals name="wall_grid_description">
+        <item quantity="one">Wall layout: %1$d hold across a %2$d by %3$d grid</item>
+        <item quantity="other">Wall layout: %1$d holds across a %2$d by %3$d grid</item>
+    </plurals>
     <string name="wall_hold_description">Hold at column %1$d, row %2$d</string>
     <string name="wall_hold_lit_description">Hold at column %1$d, row %2$d, lit %3$s</string>
 </resources>
