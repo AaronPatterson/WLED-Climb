@@ -51,9 +51,9 @@ class WallRoutesTest {
         )
     }
 
-    private fun connected(viewModel: WallViewModel): WallUiState.Connected =
-        viewModel.uiState.value as? WallUiState.Connected
-            ?: error("Expected Connected but was " + viewModel.uiState.value)
+    private fun connected(viewModel: WallViewModel): WallUiState.Ready =
+        viewModel.uiState.value as? WallUiState.Ready
+            ?: error("Expected Ready but was " + viewModel.uiState.value)
 
     @Test
     fun `the connected wall is stored so routes have something to hang off`() = runTest {

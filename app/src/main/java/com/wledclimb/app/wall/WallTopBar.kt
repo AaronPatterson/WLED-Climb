@@ -71,8 +71,7 @@ import com.wledclimb.app.network.MIN_USABLE_BRIGHTNESS
 fun WallTopBar(
     modifier: Modifier = Modifier,
     name: String,
-    on: Boolean,
-    brightness: Int,
+    controller: ControllerState,
     enabled: Boolean,
     // Hoisted, because tapping anywhere below has to close it and the content
     // down there cannot reach state that lives in here.
@@ -93,6 +92,10 @@ fun WallTopBar(
     onImportRoutes: (Uri) -> Unit,
 ) {
     val unsavedDescription = stringResource(R.string.routes_unsaved_changes)
+    // Power and brightness are questions for the controller, and have no
+    // answer while it is being asked or cannot be reached.
+    val online = controller as? ControllerState.Online
+    val on = online?.on == true
     var menuOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     val backup = rememberRouteBackup(
@@ -157,7 +160,7 @@ fun WallTopBar(
             actions = {
                 IconButton(
                     onClick = { onBrightnessOpenChange(!brightnessOpen) },
-                    enabled = enabled
+                    enabled = enabled && online != null
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_brightness),
@@ -172,7 +175,7 @@ fun WallTopBar(
                 // The label still says which way it will go, because colour
                 // alone is not an answer for anyone who cannot see it.
                 val statusColour = if (on) WallStatusColors.on else WallStatusColors.off
-                IconButton(onClick = onToggle, enabled = enabled) {
+                IconButton(onClick = onToggle, enabled = enabled && online != null) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier

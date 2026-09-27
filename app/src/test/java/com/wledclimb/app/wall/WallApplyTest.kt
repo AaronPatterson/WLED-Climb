@@ -53,9 +53,9 @@ class WallApplyTest {
         )
     }
 
-    private fun connected(viewModel: WallViewModel): WallUiState.Connected =
-        viewModel.uiState.value as? WallUiState.Connected
-            ?: error("Expected Connected but was " + viewModel.uiState.value)
+    private fun connected(viewModel: WallViewModel): WallUiState.Ready =
+        viewModel.uiState.value as? WallUiState.Ready
+            ?: error("Expected Ready but was " + viewModel.uiState.value)
 
     @Test
     fun `with auto-apply off, a tapped hold changes the screen and not the wall`() = runTest {
@@ -235,7 +235,7 @@ class WallApplyTest {
         viewModel.toggleWall()
         runCurrent()
 
-        assertTrue(connected(viewModel).on)
+        assertTrue(connected(viewModel).online.on)
         assertTrue(fixture.client.pushedHolds.isEmpty())
     }
 

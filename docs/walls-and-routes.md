@@ -26,11 +26,32 @@ once, see [wall-sharing.md](wall-sharing.md).
 
 Two of those requirements invert assumptions the app is currently built on.
 
-**A wall stops being something fetched and becomes something stored.** Today
-`Wall` is rebuilt from `/json/cfg` on every launch, and `WallUiState` has exactly
-three shapes - `Connecting`, `Connected`, `Error` - with no way to express
-"showing a route while disconnected". Offline editing needs the layout persisted,
-and needs disconnection to stop being an error.
+**A wall stops being something fetched and becomes something stored.** `Wall`
+used to be rebuilt from `/json/cfg` on every launch, and `WallUiState` had
+exactly three shapes - `Connecting`, `Connected`, `Error` - with no way to
+express "showing a route while disconnected". Offline editing needs the layout
+persisted, and needs disconnection to stop being an error.
+
+It now opens the stored wall first and asks the controller second. The device
+remembers which wall it last reached (`WledSettings.lastWallId`, forgotten when
+setup saves a different address), because a wall is identified by its
+controller's MAC and there is no asking for that offline. `WallUiState` is
+`Loading`, `Ready` or `Error`, and `Ready` carries a `ControllerState` -
+`Connecting`, `Online` with power and brightness, or `Offline` - beside the
+route rather than instead of it. `Error` is left for the case with nothing to
+fall back on: a first run, or a new address, with no controller answering.
+
+When the controller answers again:
+
+- **The same wall** keeps the work on screen, which is newer than anything
+  stored. Nothing is pushed - see Applying below. If its shape changed while
+  away, the holds on screen are carried across by position rather than by
+  segment index, which a new width would scramble.
+- **A different wall** - another controller given the address - opens as it
+  was left, and what was built offline stays with the wall it was built on.
+
+A failed push, toggle or connect marks the controller `Offline` and keeps the
+grid; it used to replace the screen with an error.
 
 **Applying becomes explicit.** Every hold tap used to push the whole route to
 the controller. Edit locally, apply deliberately is a different model, and it is

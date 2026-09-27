@@ -204,6 +204,8 @@ internal fun RouteActions(
     modified: Boolean,
     applied: Boolean,
     enabled: Boolean,
+    /** False with no controller to apply to. Everything else here is storage. */
+    canApply: Boolean,
     canSave: Boolean,
     onApply: () -> Unit,
     onSave: () -> Unit,
@@ -216,7 +218,7 @@ internal fun RouteActions(
         modifier = Modifier.fillMaxWidth()
     ) {
         if (applied) {
-            TextButton(onClick = onApply, enabled = enabled) {
+            TextButton(onClick = onApply, enabled = enabled && canApply) {
                 Icon(
                     painter = painterResource(R.drawable.ic_check),
                     contentDescription = null,
@@ -228,7 +230,7 @@ internal fun RouteActions(
                 )
             }
         } else {
-            FilledTonalButton(onClick = onApply, enabled = enabled) {
+            FilledTonalButton(onClick = onApply, enabled = enabled && canApply) {
                 Text(text = stringResource(R.string.wall_apply))
             }
         }

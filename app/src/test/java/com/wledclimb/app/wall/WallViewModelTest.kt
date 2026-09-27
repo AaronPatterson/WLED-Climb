@@ -47,16 +47,16 @@ class WallViewModelTest {
         controllerAddress = "http://wall.test"
     )
 
-    private fun connectedState(viewModel: WallViewModel): WallUiState.Connected =
-        viewModel.uiState.value as? WallUiState.Connected
-            ?: error("Expected Connected but was ${viewModel.uiState.value}")
+    private fun connectedState(viewModel: WallViewModel): WallUiState.Ready =
+        viewModel.uiState.value as? WallUiState.Ready
+            ?: error("Expected Ready but was ${viewModel.uiState.value}")
 
     @Test
     fun `loads power state and grid layout on creation`() = runTest {
         val viewModel = wallViewModel(FakeWledClient(on = true))
 
         val state = connectedState(viewModel)
-        assertTrue(state.on)
+        assertTrue(state.online.on)
         assertEquals(2, state.wall.width)
         assertEquals(2, state.wall.height)
         assertTrue(state.wall.hasHoldAt(x = 0, y = 0))
@@ -129,8 +129,8 @@ class WallViewModelTest {
         firstReply.complete(Unit)
         runCurrent()
 
-        val state = viewModel.uiState.value as WallUiState.Connected
-        assertEquals("the newer value should survive the older reply", 240, state.brightness)
+        val state = viewModel.uiState.value as WallUiState.Ready
+        assertEquals("the newer value should survive the older reply", 240, state.online.brightness)
     }
 
     @Test
@@ -150,11 +150,11 @@ class WallViewModelTest {
         runCurrent()
 
         val after = viewModel.uiState.value
-        assertTrue("expected to stay connected, was $after", after is WallUiState.Connected)
+        assertTrue("expected to stay connected, was $after", after is WallUiState.Ready)
         assertEquals(
             "the route should survive a failed brightness change",
             1,
-            (after as WallUiState.Connected).litHolds.size
+            (after as WallUiState.Ready).litHolds.size
         )
     }
 
@@ -167,7 +167,7 @@ class WallViewModelTest {
         viewModel.toggleWall()
 
         val state = connectedState(viewModel)
-        assertTrue(state.on)
+        assertTrue(state.online.on)
         assertEquals(listOf(true), client.setOnCalls)
         // The grid comes from /json/cfg, which a toggle doesn't re-read - it has
         // to be carried across or the grid would vanish on every tap.
@@ -211,7 +211,7 @@ class WallViewModelTest {
         client.failWith = null
         viewModel.refresh()
 
-        assertTrue(viewModel.uiState.value is WallUiState.Connected)
+        assertTrue(viewModel.uiState.value is WallUiState.Ready)
     }
 
     @Test
@@ -261,7 +261,7 @@ class WallViewModelTest {
         viewModel.toggleWall()
 
         val state = connectedState(viewModel)
-        assertEquals(false, state.on)
+        assertEquals(false, state.online.on)
         assertEquals(mapOf(1 to HoldColor.Red), state.litHolds)
     }
 
@@ -277,7 +277,7 @@ class WallViewModelTest {
 
         viewModel.toggleWall()
 
-        assertEquals(true, connectedState(viewModel).on)
+        assertEquals(true, connectedState(viewModel).online.on)
         assertEquals(pushesBefore + 1, client.pushedHolds.size)
         assertEquals(mapOf(1 to "FF0000"), client.pushedHolds.last())
     }
@@ -293,14 +293,19 @@ class WallViewModelTest {
     }
 
     @Test
-    fun `a failed push surfaces the error rather than leaving the wall out of sync`() = runTest {
+    fun `a failed push marks the wall out of reach and keeps the work`() = runTest {
+        // Rather than leaving the app and the wall silently disagreeing - and
+        // rather than taking the grid away, which it used to.
         val client = FakeWledClient()
         val viewModel = wallViewModel(client)
         client.failWith = IOException("gone")
 
         viewModel.toggleHold(segmentIndex = 1)
 
-        assertEquals(WallUiState.Error(WallProblem.Unreachable), viewModel.uiState.value)
+        val state = connectedState(viewModel)
+        assertEquals(ControllerState.Offline(WallProblem.Unreachable), state.controller)
+        assertEquals(mapOf(1 to HoldColor.Red), state.litHolds)
+        assertFalse(state.applied)
     }
 
     @Test
@@ -391,7 +396,7 @@ class WallViewModelTest {
     }
 
     @Test
-    fun `a failed clear surfaces the error`() = runTest {
+    fun `a failed clear marks the wall out of reach`() = runTest {
         val client = FakeWledClient()
         val viewModel = wallViewModel(client)
         viewModel.toggleHold(segmentIndex = 1)
@@ -399,6 +404,9 @@ class WallViewModelTest {
 
         viewModel.clearWall()
 
-        assertEquals(WallUiState.Error(WallProblem.Unreachable), viewModel.uiState.value)
+        assertEquals(
+            ControllerState.Offline(WallProblem.Unreachable),
+            connectedState(viewModel).controller
+        )
     }
 }
