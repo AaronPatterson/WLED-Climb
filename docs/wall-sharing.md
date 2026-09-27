@@ -46,6 +46,48 @@ For what the segment name costs and the two hazards around it - a boundary chang
 wiping it, and presets capturing it - see "WLED behaviour worth knowing" in
 [design.md](design.md).
 
+## Taking control
+
+Direction set 2026-09-27, to be built after offline mode ([design.md](design.md)
+phase 16). Offline is what makes this tractable: a device that is not holding
+the wall has somewhere sensible to be.
+
+**The default is offline when someone else holds it.** Opening the app while
+another device has a claim does not fight for the wall and does not refuse to
+work. It shows the wall, lets routes be built and saved, and simply does not
+push. That is the same state a person can choose deliberately, so nothing new
+has to be built to represent it.
+
+**Control is taken implicitly when nobody holds it**, and explicitly when
+somebody does. Waiting to be granted something nobody is using would be
+ceremony for its own sake; taking it from someone who is mid-climb should be a
+decision with a button attached.
+
+**A claim expires.** Someone who puts their phone down and walks off must not
+hold the wall until the app is reopened, so a claim carries a timestamp and
+lapses after a period of no interaction. The expiry is what keeps this a
+convention rather than a lock that needs an administrator - see "A convention,
+not a lock" above.
+
+**Reconnecting is taking control.** A device coming back Live pushes what it
+holds, because the alternative is a wall showing one route and an app claiming
+another. This is the same act as an explicit takeover and should go through the
+same path, rather than being a quiet side effect of the network returning.
+
+### What this settles of the open questions below
+
+**Detection versus claim: both, and detection is what makes the claim safe.**
+The claim says who intends to hold the wall. Detection - noticing that the
+wall's state no longer matches what this device last applied - catches every
+case the claim cannot: WLED's own interface, a preset, someone who cleared the
+name, a device that crashed without releasing. A device that detects divergence
+drops itself to offline rather than pushing over the top, which means the app
+degrades politely against people who never agreed to the convention.
+
+It also means a first useful version needs no claim at all. Detection alone
+gives "someone else is using the wall, so I am offline", and the claim adds
+only the ability to say *who* and to take it deliberately.
+
 ## Scenarios not yet designed
 
 Captured 2026-09-23. Neither is being built yet.
@@ -102,10 +144,7 @@ depends entirely on solving the one above first.
 
 ## Open questions
 
-- **Detection versus claim.** A claim says who *intends* to hold the wall.
-  Detection - polling `/json/state` and noticing the wall no longer matches what
-  this device applied - answers a different question: whether something changed
-  regardless of who claimed it. They are complementary, and it is not yet decided
-  whether both are needed.
+- ~~**Detection versus claim.**~~ Answered under "Taking control" above: both,
+  with detection alone enough for a first version.
 - **Whether takeover makes applying automatic**, as the requirement suggests, or
   whether applying stays deliberate even when holding the wall.

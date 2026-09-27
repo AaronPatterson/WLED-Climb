@@ -185,6 +185,64 @@ Notes on the later phases:
   there and not into a banner. It needs to be distinguishable without colour,
   since that is the whole point of a control a six-year-old reads at a glance.
 
+  ### Decided 2026-09-27
+
+  **Offline is a choice, not only a failure.** The scenario that settled it is
+  several phones and tablets round one wall: someone wants to build or edit a
+  route without disturbing what another person has projected and is currently
+  climbing. That is not a degraded mode to be apologised for, it is the normal
+  way to use a second device, and it means offline has to be reachable
+  deliberately rather than only arrived at by a controller going missing.
+
+  **Three link states**, carried on `WallUiState.Showing`:
+
+  - **Live** - connected, and every change goes to the wall.
+  - **Offline** - detached on purpose. Edits are local and the wall keeps
+    showing whatever is on it.
+  - **Unreachable** - tried and failed.
+
+  Offline and Unreachable suppress pushes identically. They differ in what the
+  UI says and whether it offers to retry, which is the whole reason they are
+  two states rather than a boolean: "I chose this" and "something is broken"
+  deserve different words.
+
+  **Which wall opens with no controller to ask.** The app remembers the last
+  wall it connected to, by id, and opens that. Deliberately *not* looked up by
+  the stored controller address: [walls-and-routes.md](walls-and-routes.md) and
+  `WallRepository` both argue against matching on address, because DHCP hands
+  one wall's routes to whatever answers at that address next. Offline is a
+  weaker claim than identity, but it is not a reason to reintroduce a lookup
+  the online path refuses.
+
+  **The gesture is a long press on the power button**, with a short press
+  attempting to reconnect once offline. The power button is already where the
+  indicator belongs, so the control and its state sit together. A long press is
+  undiscoverable on purpose - this is a grown-up's control, and a six-year-old
+  pressing power should still just turn the wall on and off - but "work
+  offline" also appears in the overflow menu, because undiscoverable by design
+  should not mean unreachable by anyone who was not told.
+
+  **A chosen offline survives a restart.** A tablet parked offline so someone
+  could design a route must not grab the wall back the moment the app is
+  reopened. Unreachable does not persist, because it is a fact about the world
+  rather than an intention.
+
+  **The demo wall falls out of this.** A wall nobody can reach is a wall the app
+  can already show, so a demo is a stored wall row with a reserved controller
+  MAC that is simply always offline, reached from a button on the setup screen.
+  Routes, drafts, saving and backups work on it unchanged, because none of them
+  ever needed a controller. It exists because Play review has no wall to point
+  the app at and an app that only shows "cannot connect" reads as broken - and
+  because a phone that never shares a network with the wall, which is the case
+  on a child's managed device, is otherwise useless.
+
+  **Still open: what reconnecting does to the wall.** Reconnecting pushes what
+  this device holds, which is the same thing as taking control - and is how
+  someone gets their route replaced mid-climb. Whether that is silent or asked
+  about is the question this phase shares with
+  [wall-sharing.md](wall-sharing.md), and it is answered there rather than
+  twice.
+
 
 - **Phase 17** is the other half of the promise in
   [walls-and-routes.md](walls-and-routes.md): *opening one diffs its lit
