@@ -187,7 +187,7 @@ class WallOfflineTest {
 
     @Test
     fun `with nothing remembered, an unreachable controller is still an error`() = runTest {
-        // A first run, or a new address: there is no wall to fall back on.
+        // A first run: there is no wall to fall back on.
         val stores = Stores()
         stores.client.failWith = IOException("connect timed out")
 

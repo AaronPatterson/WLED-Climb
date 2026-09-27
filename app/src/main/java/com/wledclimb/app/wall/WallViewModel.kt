@@ -206,9 +206,12 @@ class WallViewModel(
      * Puts the wall this device last reached on screen, as it was left, with
      * the controller still to be asked.
      *
-     * Leaves [WallUiState.Loading] in place when there is none - a first run,
-     * or a new address - so the controller is the only way to a wall, as it
-     * always was.
+     * Leaves [WallUiState.Loading] in place when there is none - a first
+     * run - so the controller is the only way to a wall, as it always was.
+     *
+     * Opened whatever address is saved now. A new address may lead to a
+     * different controller, and when it answers [arrive] switches to its
+     * wall; until then the last wall is the best there is to show.
      */
     private suspend fun openStoredWall() {
         _uiState.value = WallUiState.Loading

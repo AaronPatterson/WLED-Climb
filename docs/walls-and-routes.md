@@ -33,13 +33,15 @@ express "showing a route while disconnected". Offline editing needs the layout
 persisted, and needs disconnection to stop being an error.
 
 It now opens the stored wall first and asks the controller second. The device
-remembers which wall it last reached (`WledSettings.lastWallId`, forgotten when
-setup saves a different address), because a wall is identified by its
-controller's MAC and there is no asking for that offline. `WallUiState` is
+remembers which wall it last reached (`WledSettings.lastWallId`), because a
+wall is identified by its controller's MAC and there is no asking for that
+offline. It is kept when setup saves a different address and replaced only when
+a controller answers as a different wall: a new address is often the same
+controller on a new lease, and the MAC decides, not the address. `WallUiState` is
 `Loading`, `Ready` or `Error`, and `Ready` carries a `ControllerState` -
 `Connecting`, `Online` with power and brightness, or `Offline` - beside the
 route rather than instead of it. `Error` is left for the case with nothing to
-fall back on: a first run, or a new address, with no controller answering.
+fall back on: a first run, with no controller answering.
 
 When the controller answers again:
 
