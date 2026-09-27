@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -75,10 +77,21 @@ fun WallTopBar(
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
     onToggleRoutes: () -> Unit,
+    /** False when this wall could not be stored, so it has no routes to move. */
+    canBackupRoutes: Boolean,
+    /** False when there is nothing saved yet - an empty file is not a backup. */
+    canExportRoutes: Boolean,
+    onExportRoutes: (Uri) -> Unit,
+    onImportRoutes: (Uri) -> Unit,
 ) {
     val unsavedDescription = stringResource(R.string.routes_unsaved_changes)
     var menuOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
+    val backup = rememberRouteBackup(
+        wallName = name,
+        onExportTo = onExportRoutes,
+        onImportFrom = onImportRoutes
+    )
 
     if (aboutOpen) {
         AboutDialog(onDismiss = { aboutOpen = false })
@@ -194,6 +207,53 @@ fun WallTopBar(
                     // glyph, a larger label and a taller row. A menu opened
                     // rarely is exactly the one worth being able to read
                     // without stopping to aim.
+                    // Routes first. Moving them off a phone is the thing
+                    // someone comes to this menu wanting, where the controller
+                    // is set once and About is read once.
+                    DropdownMenuItem(
+                        enabled = canBackupRoutes && canExportRoutes,
+                        text = {
+                            Text(
+                                text = stringResource(R.string.routes_export),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_export),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        onClick = {
+                            menuOpen = false
+                            backup.export()
+                        }
+                    )
+                    DropdownMenuItem(
+                        enabled = canBackupRoutes,
+                        text = {
+                            Text(
+                                text = stringResource(R.string.routes_import),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_import),
+                                contentDescription = null
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        onClick = {
+                            menuOpen = false
+                            backup.import()
+                        }
+                    )
+
+                    // These two act on the app rather than on the routes.
+                    HorizontalDivider()
+
                     DropdownMenuItem(
                         text = {
                             Text(

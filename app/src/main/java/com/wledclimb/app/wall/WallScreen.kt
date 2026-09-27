@@ -83,6 +83,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.saveable.rememberSaveable
+import android.net.Uri
 import com.wledclimb.app.BuildConfig
 import com.wledclimb.app.R
 import com.wledclimb.app.grid.fingerprint
@@ -106,7 +107,9 @@ fun WallScreen(
     onLoadRoute: (Long) -> Unit,
     onSaveRoute: (name: String, routeId: Long?) -> Unit,
     onRenameRoute: (Long, String) -> Unit,
-    onDeleteRoute: (Long) -> Unit
+    onDeleteRoute: (Long) -> Unit,
+    onExportRoutes: (Uri) -> Unit,
+    onImportRoutes: (Uri) -> Unit
 ) {
     var brightnessOpen by remember { mutableStateOf(false) }
     // One dialog at a time, named by what it is asking. Seven flags and two
@@ -215,6 +218,12 @@ fun WallScreen(
                     onToggle = onToggle,
                     onBrightnessChange = onBrightnessChange,
                     onChangeController = onChangeController,
+                    // A wall that could not be stored has nowhere to put an
+                    // imported route, and nothing to export.
+                    canBackupRoutes = state.wallId != null,
+                    canExportRoutes = routes.isNotEmpty(),
+                    onExportRoutes = onExportRoutes,
+                    onImportRoutes = onImportRoutes,
                     onToggleRoutes = {
                         // The brightness row floats over the content, so going
                         // to the routes would have left it hanging over the

@@ -62,6 +62,37 @@
     <string name="routes_name_label">Name</string>
     <string name="routes_save_new">Save as new</string>
     <string name="routes_cancel">Cancel</string>
+    <string name="routes_export">Export routes</string>
+    <string name="routes_import">Import routes</string>
+    <!-- Suggested name for the exported file; %1$s is the wall's name. -->
+    <string name="routes_backup_file_name">%1$s routes.json</string>
+    <string name="routes_backup_close">OK</string>
+    <string name="routes_export_done_title">Routes exported</string>
+    <plurals name="routes_export_done_body">
+        <item quantity="one">%1$d route was written to the file you chose.</item>
+        <item quantity="other">%1$d routes were written to the file you chose.</item>
+    </plurals>
+    <string name="routes_import_done_title">Routes imported</string>
+    <plurals name="routes_import_added">
+        <item quantity="one">%1$d route added.</item>
+        <item quantity="other">%1$d routes added.</item>
+    </plurals>
+    <plurals name="routes_import_skipped">
+        <item quantity="one">%1$d was already here and was left alone.</item>
+        <item quantity="other">%1$d were already here and were left alone.</item>
+    </plurals>
+    <plurals name="routes_import_renamed">
+        <item quantity="one">%1$d had a name already in use, so it was numbered.</item>
+        <item quantity="other">%1$d had names already in use, so they were numbered.</item>
+    </plurals>
+    <string name="routes_import_nothing_new">Nothing new - every route in that file is already here.</string>
+    <string name="routes_backup_failed_title">That did not work</string>
+    <string name="routes_backup_failed_unreadable">That file could not be read. Pick a routes file exported from this app.</string>
+    <string name="routes_backup_failed_not_a_backup">That is not a routes file exported from this app.</string>
+    <string name="routes_backup_failed_too_new">That file was written by a newer version of this app. Update the app, then try again.</string>
+    <string name="routes_backup_failed_wrong_wall">That file holds routes for a different climbing wall. Routes describe positions on the wall they were built on, so they cannot be moved to another one.</string>
+    <string name="routes_backup_failed_empty">That file has no routes in it.</string>
+    <string name="routes_backup_failed_unknown">The file could not be read or written. Check there is room on the device, then try again.</string>
     <string name="routes_delete_title">Delete %1$s?</string>
     <string name="routes_delete_body">The route is removed. The wall stays lit as it is.</string>
 

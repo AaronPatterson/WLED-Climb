@@ -19,6 +19,9 @@ class InMemoryRouteDao : RouteDao {
     override fun forWall(wallId: Long): Flow<List<StoredRoute>> =
         rows.map { list -> list.filter { it.wallId == wallId }.sortedByDescending { it.updatedAt } }
 
+    override suspend fun listFor(wallId: Long): List<StoredRoute> =
+        rows.value.filter { it.wallId == wallId }.sortedBy { it.name }
+
     override suspend fun staleFor(wallId: Long, fingerprint: String): List<StoredRoute> =
         rows.value.filter { it.wallId == wallId && it.wallFingerprint != fingerprint }
 

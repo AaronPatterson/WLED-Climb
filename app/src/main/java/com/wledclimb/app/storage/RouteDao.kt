@@ -16,6 +16,13 @@ interface RouteDao {
     fun forWall(wallId: Long): Flow<List<StoredRoute>>
 
     /**
+     * The same rows, once, rather than as a Flow. Writing a backup is a single
+     * question asked at a moment, not something to keep watching.
+     */
+    @Query("SELECT * FROM routes WHERE wallId = :wallId ORDER BY name")
+    suspend fun listFor(wallId: Long): List<StoredRoute>
+
+    /**
      * Routes whose wall no longer looks the way it did when they were saved.
      * They stay in the list with a warning rather than disappearing.
      */
