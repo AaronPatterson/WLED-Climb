@@ -1,5 +1,6 @@
 package com.wledclimb.app
 
+import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -28,6 +29,12 @@ class MainActivity : ComponentActivity() {
         LambdaViewModelFactory { RootViewModel(DataStoreWledSettings(applicationContext)) }
     }
 
+    // Lint is right that locking orientation is usually wrong, and it is
+    // suppressed rather than obeyed: the check cannot see that this only
+    // applies below the width where the layout has room, or that the
+    // alternative on a phone is a wall too small to tap. Revisit it with a
+    // landscape layout, not by unlocking.
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         // Portrait only where landscape has no room for the wall.
         //
@@ -48,9 +55,13 @@ class MainActivity : ComponentActivity() {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
         }
 
-        // targetSdk 35 draws edge-to-edge whether we ask or not, so opt in
-        // explicitly and inset the content rather than letting it slide under
-        // the status and navigation bars.
+        // The platform draws edge-to-edge without being asked at the SDK this
+        // app targets, so opt in explicitly and inset the content rather than
+        // letting it slide under the status and navigation bars.
+        //
+        // Deliberately not naming the version it started at: the comment said
+        // 35 while the app targeted 36, which is the way a number in a comment
+        // usually ends up.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {

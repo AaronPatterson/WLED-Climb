@@ -29,6 +29,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.wledclimb.app.R
 import com.wledclimb.app.network.MAX_BRIGHTNESS
 import com.wledclimb.app.network.MIN_USABLE_BRIGHTNESS
 
@@ -63,6 +66,10 @@ fun BrightnessControl(
     // 0% and 100%. The wall never actually reaches zero, but a slider whose
     // bottom says 3% looks broken, and "as dim as this goes" is what it means.
     val percent = ((position - MIN_USABLE_BRIGHTNESS) / usableRange * 100).toInt()
+    // Resolved out here: semantics runs outside composition and cannot reach a
+    // string resource from inside the lambda.
+    val description =
+        pluralStringResource(R.plurals.wall_brightness_description, percent, percent)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -127,10 +134,10 @@ fun BrightnessControl(
                     // Android drives its back gesture from both screen edges and
                     // wins over whatever is drawn there.
                     .systemGestureExclusion()
-                    .semantics { contentDescription = "Brightness $percent percent" }
+                    .semantics { contentDescription = description }
             )
             Text(
-                text = "$percent%",
+                text = stringResource(R.string.wall_brightness_percent, percent),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.End,
