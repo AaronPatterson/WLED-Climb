@@ -80,7 +80,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.wledclimb.app.BuildConfig
@@ -149,7 +149,7 @@ fun WallScreen(
     // that changes nothing. Survives rotation, because turning a tablet is not
     // a request to bring the list back.
     var routesCollapsed by rememberSaveable { mutableStateOf(false) }
-    val roomForBoth = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val roomForBoth = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
     val directive = if (routesCollapsed) {
         roomForBoth.copy(maxHorizontalPartitions = 1)
     } else {
