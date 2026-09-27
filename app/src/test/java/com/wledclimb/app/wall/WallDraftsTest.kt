@@ -10,6 +10,7 @@ package com.wledclimb.app.wall
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.FakeWledClient
+import com.wledclimb.app.FakeWledSettings
 import com.wledclimb.app.MainDispatcherRule
 import com.wledclimb.app.storage.InMemoryRouteDao
 import com.wledclimb.app.storage.InMemoryWallDao
@@ -40,12 +41,14 @@ class WallDraftsTest {
         val client = FakeWledClient(on = true)
         val wallDao = InMemoryWallDao()
         val routeDao = InMemoryRouteDao()
+        val settings = FakeWledSettings()
 
         /** A ViewModel over the same storage - the app being opened again. */
         fun open() = WallViewModel(
             client = client,
             walls = WallRepository(wallDao),
             routes = RouteRepository(routeDao) { 1000L },
+            settings = settings,
             controllerAddress = "http://wall.test"
         )
     }

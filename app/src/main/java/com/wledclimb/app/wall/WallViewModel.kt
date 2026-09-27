@@ -10,6 +10,7 @@ import com.wledclimb.app.network.WledIdentity
 import com.wledclimb.app.network.WledIdentityException
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.grid.fingerprint
+import com.wledclimb.app.settings.WledSettings
 import com.wledclimb.app.storage.RouteBackup
 import com.wledclimb.app.storage.RouteBackupException
 import com.wledclimb.app.storage.RouteHolds
@@ -50,6 +51,7 @@ class WallViewModel(
     private val client: WledClient,
     private val walls: WallRepository,
     private val routes: RouteRepository,
+    private val settings: WledSettings,
     private val controllerAddress: String,
     /**
      * Where reading and writing a backup file happens. Injected so tests can
@@ -181,7 +183,27 @@ class WallViewModel(
                 WallUiState.Error(problemFor(e))
             }
 
-            restore?.let { restoreWorkingState(it) }
+            restore?.let {
+                rememberWall(it)
+                restoreWorkingState(it)
+            }
+        }
+    }
+
+    /**
+     * Records which wall the controller turned out to be, so it can be opened
+     * the next time there is no controller to ask.
+     *
+     * Failing to record it costs that and nothing else - the wall is here and
+     * working now - so it is logged rather than surfaced.
+     */
+    private suspend fun rememberWall(stored: StoredWall) {
+        try {
+            settings.saveLastWallId(stored.id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "remembering the wall failed; it cannot be opened offline", e)
         }
     }
 

@@ -11,6 +11,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val TAG = "SetupViewModel"
@@ -72,6 +73,14 @@ class SetupViewModel(
                 // the next screen - by which point the address is no longer in
                 // front of them to correct.
                 clientFactory(baseUrl).getWall()
+                // A new address may be a different controller, so the wall
+                // remembered for the old one no longer says anything about
+                // it - and opening that wall offline would show one wall's
+                // routes against another's. Forgotten first, so dying between
+                // the two writes leaves an address with no wall rather than
+                // the wrong one. The same address keeps it: setup is also
+                // how someone backs out to the wall they already had.
+                if (settings.wledIp.first() != baseUrl) settings.saveLastWallId(null)
                 settings.saveWledIp(baseUrl)
                 SetupUiState.Connected(ip = baseUrl)
             } catch (e: CancellationException) {

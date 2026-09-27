@@ -15,4 +15,20 @@ interface WledSettings {
     val wledIp: Flow<String?>
 
     suspend fun saveWledIp(ip: String)
+
+    /**
+     * The stored wall the controller at [wledIp] turned out to be, the last
+     * time it answered. Null before it has ever answered, and after the
+     * address changes.
+     *
+     * This is what lets the app open a wall with no controller in reach. A
+     * wall is identified by the controller's MAC, and the MAC can only be
+     * asked for - so without a record of which wall this device last reached,
+     * there is nothing to look the stored wall up by. The address is not
+     * used for that: it is exactly what DHCP hands to a different controller,
+     * and identity is the one thing it is not.
+     */
+    val lastWallId: Flow<Long?>
+
+    suspend fun saveLastWallId(id: Long?)
 }

@@ -5,6 +5,7 @@
 package com.wledclimb.app.wall
 
 import com.wledclimb.app.FakeWledClient
+import com.wledclimb.app.FakeWledSettings
 import com.wledclimb.app.MainDispatcherRule
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.storage.InMemoryRouteDao
@@ -44,10 +45,12 @@ class WallBackupTest {
     private class Fixture {
         val wallDao = InMemoryWallDao()
         val routeDao = InMemoryRouteDao()
+        val settings = FakeWledSettings()
         val viewModel = WallViewModel(
             client = FakeWledClient(on = true),
             walls = WallRepository(wallDao),
             routes = RouteRepository(routeDao) { 1000L },
+            settings = settings,
             controllerAddress = "http://wall.test",
             io = UnconfinedTestDispatcher()
         )

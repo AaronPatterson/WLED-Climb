@@ -44,6 +44,46 @@ class SetupViewModelTest {
     }
 
     @Test
+    fun `a new address forgets the wall the old one led to`() = runTest {
+        // Offline, the remembered wall is what the app opens. Kept across a
+        // change of address, it would show one wall's routes for another.
+        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
+        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
+        viewModel.onIpInputChange("192.168.1.60")
+
+        viewModel.testAndSave()
+
+        assertEquals("http://192.168.1.60", settings.savedIp)
+        assertNull(settings.savedWallId)
+    }
+
+    @Test
+    fun `saving the same address again keeps the wall`() = runTest {
+        // Setup is also the way back to the wall already in use. Forgetting
+        // it there would leave the app unable to open that wall offline.
+        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
+        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
+        viewModel.onIpInputChange("192.168.1.50")
+
+        viewModel.testAndSave()
+
+        assertEquals(7L, settings.savedWallId)
+    }
+
+    @Test
+    fun `a failed setup forgets nothing`() = runTest {
+        client.failWith = IOException("connect timed out")
+        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
+        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
+        viewModel.onIpInputChange("192.168.1.60")
+
+        viewModel.testAndSave()
+
+        assertEquals("http://192.168.1.50", settings.savedIp)
+        assertEquals(7L, settings.savedWallId)
+    }
+
+    @Test
     fun `a bare address gets an http prefix, an explicit one is left alone`() = runTest {
         viewModel().apply {
             onIpInputChange("192.168.1.50")
