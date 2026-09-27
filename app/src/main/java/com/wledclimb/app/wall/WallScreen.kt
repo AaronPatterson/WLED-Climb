@@ -109,16 +109,11 @@ fun WallScreen(
     onDeleteRoute: (Long) -> Unit
 ) {
     var brightnessOpen by remember { mutableStateOf(false) }
-    var saving by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<StoredRoute?>(null) }
-    // Held while the "save first?" question is on screen, and run once it is
-    // answered. Switching away from unsaved work is the only place the app
-    // can silently lose something someone made.
-    var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var afterSave by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var resetting by remember { mutableStateOf(false) }
-    var savingAsNew by remember { mutableStateOf<StoredRoute?>(null) }
-    var deleting by remember { mutableStateOf<StoredRoute?>(null) }
+    // One dialog at a time, named by what it is asking. Seven flags and two
+    // stored lambdas said the same thing less clearly, and allowed states that
+    // cannot happen - two dialogs at once, or an action waiting to resume with
+    // nothing on screen to resume it.
+    var dialog by remember { mutableStateOf<RouteDialog?>(null) }
     // Measured rather than assumed, so the floating brightness row sits under
     // the bar whatever height the bar turns out to be.
     var topBarHeight by remember { mutableIntStateOf(0) }
@@ -136,7 +131,11 @@ fun WallScreen(
     val openRoute = (state as? WallUiState.Connected)
         ?.let { s -> routes.firstOrNull { it.id == s.selectedRouteId } }
     val save = {
-        if (openRoute == null) saving = true else onSaveRoute(openRoute.name, openRoute.id)
+        if (openRoute == null) {
+            dialog = RouteDialog.Name(then = null)
+        } else {
+            onSaveRoute(openRoute.name, openRoute.id)
+        }
     }
 
     // Where there is room for both panes, the routes list can still be put
@@ -177,6 +176,28 @@ fun WallScreen(
         )
     }
     val scope = rememberCoroutineScope()
+
+    // Performs what was asked for, and puts the wall back in front of whoever
+    // asked - on a phone the list was covering it, and on a tablet both panes
+    // are already up and this does nothing.
+    val run = { action: PendingAction ->
+        when (action) {
+            is PendingAction.Open -> onLoadRoute(action.routeId)
+            PendingAction.StartNew -> onNewRoute()
+        }
+        scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }
+        Unit
+    }
+
+    // Anything that takes the current work off the wall asks first when there
+    // is unsaved work to lose, and otherwise simply happens.
+    val start = { action: PendingAction ->
+        if ((state as? WallUiState.Connected)?.modified == true) {
+            dialog = RouteDialog.UnsavedChanges(action)
+        } else {
+            run(action)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -262,31 +283,11 @@ fun WallScreen(
                                 // than failing when pressed.
                                 canSave = state.wallId != null,
                                 onLoad = { routeId ->
-                                    val load = {
-                                        onLoadRoute(routeId)
-                                        // Back to the wall on a phone, where
-                                        // the list covered it. On a tablet both
-                                        // panes are already up and this does
-                                        // nothing.
-                                        scope.launch {
-                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                        }
-                                        Unit
-                                    }
-                                    if (state.modified) pending = load else load()
+                                    start(PendingAction.Open(routeId))
                                 },
-                                onNew = {
-                                    val new = {
-                                        onNewRoute()
-                                        scope.launch {
-                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                        }
-                                        Unit
-                                    }
-                                    if (state.modified) pending = new else new()
-                                },
-                                onRename = { renaming = it },
-                                onDelete = { deleting = it }
+                                onNew = { start(PendingAction.StartNew) },
+                                onRename = { dialog = RouteDialog.Rename(it) },
+                                onDelete = { dialog = RouteDialog.Delete(it) }
                             )
                         }
                     },
@@ -322,8 +323,10 @@ fun WallScreen(
                                         state = state,
                                         routeName = openRoute?.name,
                                         onSave = save,
-                                        onSaveAs = { savingAsNew = openRoute },
-                                        onReset = { resetting = true },
+                                        onSaveAs = {
+                                        openRoute?.let { dialog = RouteDialog.NameCopy(it) }
+                                    },
+                                        onReset = { dialog = RouteDialog.Reset },
                                         onHoldTap = onHoldTap,
                                         onColorSelect = onColorSelect,
                                         onClearWall = onClearWall
@@ -376,99 +379,23 @@ fun WallScreen(
         }
     }
 
-    if (state is WallUiState.Connected && saving) {
-        SaveRouteDialog(
-            title = stringResource(R.string.routes_save_title),
-            initialName = "",
-            onDismiss = {
-                saving = false
-                afterSave = null
-            },
-            onSave = { name ->
-                saving = false
-                onSaveRoute(name, null)
-                afterSave?.invoke()
-                afterSave = null
-            }
-        )
-    }
-
-    savingAsNew?.let { route ->
-        SaveRouteDialog(
-            title = stringResource(R.string.routes_save_as_title),
-            initialName = route.name,
-            onDismiss = { savingAsNew = null },
-            onSave = { name ->
-                savingAsNew = null
-                onSaveRoute(name, null)
-            }
-        )
-    }
-
     if (state is WallUiState.Connected) {
-        pending?.let { action ->
-            val open = routes.firstOrNull { it.id == state.selectedRouteId }
-            UnsavedChangesDialog(
-                routeName = open?.name,
-                onCancel = { pending = null },
-                onDiscard = {
-                    pending = null
-                    action()
+        dialog?.let { open ->
+            RouteDialogHost(
+                dialog = open,
+                openRoute = openRoute,
+                onDismiss = { dialog = null },
+                onShow = { dialog = it },
+                onRun = { action ->
+                    dialog = null
+                    run(action)
                 },
-                onSave = {
-                    pending = null
-                    if (openRoute == null) {
-                        // Never saved, so it has to be named first. The
-                        // interrupted action runs once that is done, or
-                        // answering "save" would also mean losing the thing
-                        // you were trying to open.
-                        afterSave = action
-                        saving = true
-                    } else {
-                        // Saving an open route writes it and asks nothing -
-                        // the same rule as the save button. Going through the
-                        // naming dialog here asked for a name and then created
-                        // a second route, leaving the one being saved exactly
-                        // as it was.
-                        onSaveRoute(openRoute.name, openRoute.id)
-                        action()
-                    }
-                }
+                onSaveRoute = onSaveRoute,
+                onRenameRoute = onRenameRoute,
+                onDeleteRoute = onDeleteRoute,
+                onRevertRoute = onRevertRoute
             )
         }
-    }
-
-    if (state is WallUiState.Connected && resetting) {
-        ResetRouteDialog(
-            routeName = routes.firstOrNull { it.id == state.selectedRouteId }?.name,
-            onDismiss = { resetting = false },
-            onReset = {
-                resetting = false
-                onRevertRoute()
-            }
-        )
-    }
-
-    renaming?.let { route ->
-        RenameRouteDialog(
-            initialName = route.name,
-            onDismiss = { renaming = null },
-            onRename = { name ->
-                renaming = null
-                onRenameRoute(route.id, name)
-            }
-        )
-    }
-
-    deleting?.let { route ->
-        DeleteRouteDialog(
-            name = route.name,
-            onDismiss = { deleting = null },
-            onDelete = {
-                deleting = null
-                onDeleteRoute(route.id)
-            }
-        )
     }
 }
 
