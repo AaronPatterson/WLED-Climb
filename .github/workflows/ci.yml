@@ -39,12 +39,26 @@ jobs:
       - name: Build, test and lint
         run: ./gradlew test lintDebug assembleDebug --no-daemon
 
+      # Always, including when the build failed: a green run is no evidence
+      # that any test ran, since Gradle's test task prints nothing on success.
+      # A suite reduced to zero tests passes exactly as loudly as one that
+      # works, and this is what tells the two apart.
+      - name: Summarise tests
+        if: always()
+        run: python3 scripts/ci/summarise-tests.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results
+          path: app/build/test-results/
+          retention-days: 7
+
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v5
         with:
           name: build-reports
-          path: |
-            app/build/reports/
-            app/build/test-results/
+          path: app/build/reports/
           retention-days: 7
