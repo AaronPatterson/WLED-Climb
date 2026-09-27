@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -62,7 +63,13 @@ internal fun WallGrid(
 ) {
     val holdCount = wall.holdCount
     val description =
-        stringResource(R.string.wall_grid_description, holdCount, wall.width, wall.height)
+        pluralStringResource(
+                    R.plurals.wall_grid_description,
+                    holdCount,
+                    holdCount,
+                    wall.width,
+                    wall.height
+                )
 
     // Scaling through graphicsLayer doesn't change the layout size, so a
     // zoomed grid would otherwise paint straight over the controls below it.

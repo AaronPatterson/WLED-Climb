@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.wledclimb.app.R
 import com.wledclimb.app.network.MAX_BRIGHTNESS
@@ -67,7 +68,8 @@ fun BrightnessControl(
     val percent = ((position - MIN_USABLE_BRIGHTNESS) / usableRange * 100).toInt()
     // Resolved out here: semantics runs outside composition and cannot reach a
     // string resource from inside the lambda.
-    val description = stringResource(R.string.wall_brightness_description, percent)
+    val description =
+        pluralStringResource(R.plurals.wall_brightness_description, percent, percent)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
