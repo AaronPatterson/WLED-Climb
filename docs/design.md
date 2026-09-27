@@ -189,9 +189,10 @@ Notes on the later phases:
   [walls-and-routes.md](walls-and-routes.md).
 
   - *Finding the wall offline.* The device remembers the id of the wall it last
-    reached, in settings, and forgets it when setup saves a different address.
-    Not looked up by address: identity is the MAC, and the address is what DHCP
-    hands to someone else.
+    reached, in settings, and keeps it until a controller answers as a
+    different wall - a new address saved in setup does not clear it. Not looked
+    up by address: identity is the MAC, and the address is what DHCP hands to
+    someone else.
   - *State.* `WallUiState` is `Loading`, `Ready` or `Error`, and `Ready` carries
     a `ControllerState` - `Connecting`, `Online` or `Offline` - beside the route.
     `Error` is left for having no stored wall to fall back on.
