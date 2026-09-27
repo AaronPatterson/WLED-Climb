@@ -51,6 +51,7 @@
     <string name="routes_save">Save</string>
     <string name="routes_more">More</string>
     <string name="routes_rename">Rename</string>
+    <string name="routes_rename_done">Done renaming</string>
     <string name="routes_delete">Delete</string>
     <string name="routes_empty">No saved routes yet. Light some holds, then tap Save.</string>
     <string name="routes_unavailable">Routes cannot be saved for this wall.</string>

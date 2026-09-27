@@ -45,7 +45,11 @@ fun SaveRouteDialog(
     // Selected, not just filled. The name is a suggestion for something new,
     // so typing should replace it rather than land in the middle of it - and
     // an empty field, which is the first-save case, selects nothing.
-    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    // Keyed on the name it was opened with. Without a key, rememberSaveable
+    // restores by position in the composition - and this dialog sits at the
+    // same position every time it opens, so renaming one route and then
+    // another handed back the first route's name.
+    var field by rememberSaveable(initialName, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(selectAll(initialName))
     }
     val name = field.text
@@ -94,7 +98,11 @@ fun RenameRouteDialog(
 ) {
     // Selected, so typing replaces. The old name is shown to say what it is,
     // not because it is a starting point to edit in the middle of.
-    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    // Keyed on the name it was opened with. Without a key, rememberSaveable
+    // restores by position in the composition - and this dialog sits at the
+    // same position every time it opens, so renaming one route and then
+    // another handed back the first route's name.
+    var field by rememberSaveable(initialName, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(selectAll(initialName))
     }
     val name = field.text
