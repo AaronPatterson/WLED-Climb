@@ -1,0 +1,194 @@
+package com.wledclimb.app.wall
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.wledclimb.app.R
+
+/**
+ * The open route's name, and the three things that can be done to what is on
+ * the wall.
+ *
+ * Split out of WallScreen for the same reason as the grid: a strip of the
+ * screen with its own rules about when a name may be edited and when each
+ * action applies, none of which are about navigation.
+ */
+
+@Composable
+internal fun RouteTitle(
+    routeName: String?,
+    enabled: Boolean,
+    onRename: (String) -> Unit
+) {
+    var editing by remember(routeName) { mutableStateOf(false) }
+    // Selected on open, so a rename is one gesture rather than clearing first.
+    var draft by remember(routeName) { mutableStateOf(selectAll(routeName.orEmpty())) }
+    val focusRequester = remember { FocusRequester() }
+    // The field reports itself unfocused once on first composition, before the
+    // request below has been granted. Committing on that would close the field
+    // the instant it opened - which is exactly what it did.
+    var hasFocused by remember(routeName) { mutableStateOf(false) }
+
+    val commit = {
+        val trimmed = draft.text.trim()
+        if (trimmed.isNotBlank() && trimmed != routeName) onRename(trimmed)
+        editing = false
+    }
+
+    if (editing) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+        BasicTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { commit() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { focus ->
+                    if (focus.isFocused) {
+                        hasFocused = true
+                    } else if (hasFocused && editing) {
+                        commit()
+                    }
+                }
+        )
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (routeName != null && enabled) {
+                        Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(
+                                onClickLabel = stringResource(R.string.routes_rename),
+                                onClick = { editing = true }
+                            )
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
+            Text(
+                text = routeName ?: stringResource(R.string.routes_unsaved),
+                // A step above the wall's name in the bar, which is titleLarge.
+                // The route is the thing being worked on and stays the larger.
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (routeName == null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+
+            // Only with a route to rename. Work nobody has saved has no name
+            // to change - it gets one by being saved.
+            if (routeName != null) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_rename),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Reset, save as and save, sitting on the wall rather than above the name.
+ *
+ * Against the top of the grid because that is what they act on, and pushed
+ * right so they do not make a second column of icons under the ones in the
+ * bar - two clusters in the same corner left it unclear which row owned which.
+ *
+ * All three stay put and grey out. A control that is sometimes absent is
+ * harder to learn than one that is sometimes grey, since there is no way to
+ * notice a button that is not there.
+ */
+
+@Composable
+internal fun RouteActions(
+    routeName: String?,
+    modified: Boolean,
+    enabled: Boolean,
+    canSave: Boolean,
+    onSave: () -> Unit,
+    onSaveAs: () -> Unit,
+    onReset: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        IconButton(onClick = onReset, enabled = enabled && modified) {
+            Icon(
+                painter = painterResource(R.drawable.ic_reset),
+                contentDescription = stringResource(R.string.routes_reset)
+            )
+        }
+
+        // Copying a route to work from is worth offering before anything has
+        // been changed, so this waits only for there being a route to copy.
+        IconButton(onClick = onSaveAs, enabled = enabled && canSave && routeName != null) {
+            Icon(
+                painter = painterResource(R.drawable.ic_save_as),
+                contentDescription = stringResource(R.string.routes_save_new)
+            )
+        }
+
+        FilledTonalIconButton(onClick = onSave, enabled = enabled && canSave && modified) {
+            Icon(
+                painter = painterResource(R.drawable.ic_save),
+                contentDescription = stringResource(R.string.routes_save_current),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
