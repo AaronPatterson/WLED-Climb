@@ -50,20 +50,24 @@ import com.wledclimb.app.R
 
 @Composable
 internal fun RouteTitle(
+    routeId: Long?,
     routeName: String?,
     enabled: Boolean,
     onRename: (String) -> Unit
 ) {
-    var editing by rememberSaveable(routeName) { mutableStateOf(false) }
+    // Keyed on which route this is, not on what it is called. The name is the
+    // thing being edited and two routes may share one, so keying on it meant
+    // the field could carry over between routes and reset itself mid-rename.
+    var editing by rememberSaveable(routeId) { mutableStateOf(false) }
     // Selected on open, so a rename is one gesture rather than clearing first.
-    var draft by rememberSaveable(routeName, stateSaver = TextFieldValue.Saver) {
+    var draft by rememberSaveable(routeId, stateSaver = TextFieldValue.Saver) {
         mutableStateOf(selectAll(routeName.orEmpty()))
     }
     val focusRequester = remember { FocusRequester() }
     // The field reports itself unfocused once on first composition, before the
     // request below has been granted. Committing on that would close the field
     // the instant it opened - which is exactly what it did.
-    var hasFocused by remember(routeName) { mutableStateOf(false) }
+    var hasFocused by remember(routeId) { mutableStateOf(false) }
 
     val commit = {
         val trimmed = draft.text.trim()
@@ -74,27 +78,40 @@ internal fun RouteTitle(
     if (editing) {
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-        BasicTextField(
-            value = draft,
-            onValueChange = { draft = it },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { commit() }),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-                .onFocusChanged { focus ->
-                    if (focus.isFocused) {
-                        hasFocused = true
-                    } else if (hasFocused && editing) {
-                        commit()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BasicTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.headlineSmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { commit() }),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focus ->
+                        if (focus.isFocused) {
+                            hasFocused = true
+                        } else if (hasFocused && editing) {
+                            commit()
+                        }
                     }
-                }
-        )
+            )
+
+            // Somewhere to say "done" that is not the keyboard's own key and
+            // not tapping away. Both of those work, and neither looks like a
+            // way to finish - one is hidden behind whichever keyboard someone
+            // uses, and the other is indistinguishable from giving up.
+            IconButton(onClick = { commit() }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check),
+                    contentDescription = stringResource(R.string.routes_rename_done)
+                )
+            }
+        }
     } else {
         Row(
             verticalAlignment = Alignment.CenterVertically,

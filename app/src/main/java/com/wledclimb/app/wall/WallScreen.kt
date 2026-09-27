@@ -307,6 +307,7 @@ fun WallScreen(
                                 // centred with it drifted down the screen away
                                 // from the bar it belongs under.
                                 RouteTitle(
+                                    routeId = openRoute?.id,
                                     routeName = openRoute?.name,
                                     enabled = !state.busy,
                                     onRename = { newName ->
