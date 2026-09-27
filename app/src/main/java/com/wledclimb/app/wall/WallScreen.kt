@@ -417,11 +417,22 @@ fun WallScreen(
                 },
                 onSave = {
                     pending = null
-                    // Straight to the save dialog, which then runs the action
-                    // it interrupted - so answering "save" does not also mean
-                    // losing the thing you were trying to open.
-                    afterSave = action
-                    saving = true
+                    if (openRoute == null) {
+                        // Never saved, so it has to be named first. The
+                        // interrupted action runs once that is done, or
+                        // answering "save" would also mean losing the thing
+                        // you were trying to open.
+                        afterSave = action
+                        saving = true
+                    } else {
+                        // Saving an open route writes it and asks nothing -
+                        // the same rule as the save button. Going through the
+                        // naming dialog here asked for a name and then created
+                        // a second route, leaving the one being saved exactly
+                        // as it was.
+                        onSaveRoute(openRoute.name, openRoute.id)
+                        action()
+                    }
                 }
             )
         }
