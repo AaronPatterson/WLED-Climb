@@ -113,7 +113,9 @@ fun WallScreen(
     // stored lambdas said the same thing less clearly, and allowed states that
     // cannot happen - two dialogs at once, or an action waiting to resume with
     // nothing on screen to resume it.
-    var dialog by remember { mutableStateOf<RouteDialog?>(null) }
+    var dialog by rememberSaveable(stateSaver = RouteDialogSaver) {
+        mutableStateOf<RouteDialog?>(null)
+    }
     // Measured rather than assumed, so the floating brightness row sits under
     // the bar whatever height the bar turns out to be.
     var topBarHeight by remember { mutableIntStateOf(0) }
@@ -286,8 +288,8 @@ fun WallScreen(
                                     start(PendingAction.Open(routeId))
                                 },
                                 onNew = { start(PendingAction.StartNew) },
-                                onRename = { dialog = RouteDialog.Rename(it) },
-                                onDelete = { dialog = RouteDialog.Delete(it) }
+                                onRename = { dialog = RouteDialog.Rename(it.id) },
+                                onDelete = { dialog = RouteDialog.Delete(it.id) }
                             )
                         }
                     },
@@ -324,7 +326,7 @@ fun WallScreen(
                                         routeName = openRoute?.name,
                                         onSave = save,
                                         onSaveAs = {
-                                        openRoute?.let { dialog = RouteDialog.NameCopy(it) }
+                                        openRoute?.let { dialog = RouteDialog.NameCopy(it.id) }
                                     },
                                         onReset = { dialog = RouteDialog.Reset },
                                         onHoldTap = onHoldTap,
@@ -383,6 +385,7 @@ fun WallScreen(
         dialog?.let { open ->
             RouteDialogHost(
                 dialog = open,
+                routes = routes,
                 openRoute = openRoute,
                 onDismiss = { dialog = null },
                 onShow = { dialog = it },
