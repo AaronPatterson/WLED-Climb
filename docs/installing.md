@@ -1,6 +1,6 @@
 # Getting the app onto a device
 
-Builds are published as signed APKs on [GitHub releases](https://github.com/AaronPatterson/WLED-Climbing-Wall/releases). Obtainium watches that page and offers each new release as an update, so a device only has to be set up once.
+Builds are published as signed APKs on [GitHub releases](https://github.com/AaronPatterson/WLED-Climb/releases). Obtainium watches that page and offers each new release as an update, so a device only has to be set up once.
 
 ## Why not the Play Store
 
@@ -40,7 +40,7 @@ The certificate SHA-256 should be `B3:53:60:1F:6A:1D:5F:D6:60:3A:E2:F5:0B:E8:0C:
 In Obtainium, add:
 
 ```
-https://github.com/AaronPatterson/WLED-Climbing-Wall
+https://github.com/AaronPatterson/WLED-Climb
 ```
 
 It picks up the latest release and offers every future one. Android will ask permission for Obtainium to install packages the first time.

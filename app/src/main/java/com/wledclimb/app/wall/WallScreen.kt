@@ -515,4 +515,4 @@ private fun ColumnScope.ErrorContent(problem: WallProblem, onRetry: () -> Unit) 
  */
 
 internal const val PRIVACY_POLICY_URL =
-    "https://aaronpatterson.github.io/WLED-Climbing-Wall/privacy.html"
+    "https://aaronpatterson.github.io/WLED-Climb/privacy.html"
