@@ -150,6 +150,27 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // Checks that ask the network what the newest version of everything is.
+        // They report on what was published today rather than on what changed,
+        // so on CI they make the result depend on the date - and on a branch
+        // that touched no dependencies they are noise either way.
+        //
+        // Upgrading is a thing to do deliberately, by looking, not something
+        // to be told about by a build that had no opinion on it yesterday.
+        disable += setOf(
+            "GradleDependency",
+            "NewerVersionAvailable",
+            "AndroidGradlePluginVersion"
+        )
+        // Warnings stay warnings. There are real ones in here worth reading -
+        // targetSdk trailing compileSdk, for one - and failing the build on
+        // them today would mean either fixing them all now or ignoring the
+        // report, neither of which is what it is for.
+        warningsAsErrors = false
+        abortOnError = true
+    }
+
     testOptions {
         // android.util.Log is a stub in local unit tests and throws "not mocked"
         // by default - which would fail any test covering a code path that logs.
