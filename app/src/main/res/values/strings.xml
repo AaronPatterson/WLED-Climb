@@ -72,6 +72,8 @@
     <string name="wall_zoom_out">Zoom out</string>
 
     <string name="wall_brightness">Brightness</string>
+    <string name="wall_brightness_percent">%1$d%%</string>
+    <string name="wall_brightness_description">Brightness %1$d percent</string>
     <string name="wall_menu">Menu</string>
 
     <!-- About -->
