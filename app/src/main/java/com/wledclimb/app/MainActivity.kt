@@ -48,9 +48,13 @@ class MainActivity : ComponentActivity() {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
         }
 
-        // targetSdk 35 draws edge-to-edge whether we ask or not, so opt in
-        // explicitly and inset the content rather than letting it slide under
-        // the status and navigation bars.
+        // The platform draws edge-to-edge without being asked at the SDK this
+        // app targets, so opt in explicitly and inset the content rather than
+        // letting it slide under the status and navigation bars.
+        //
+        // Deliberately not naming the version it started at: the comment said
+        // 35 while the app targeted 36, which is the way a number in a comment
+        // usually ends up.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
