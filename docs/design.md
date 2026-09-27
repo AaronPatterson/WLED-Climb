@@ -185,6 +185,28 @@ Notes on the later phases:
   there and not into a banner. It needs to be distinguishable without colour,
   since that is the whole point of a control a six-year-old reads at a glance.
 
+  **As built.** The questions above were answered this way; the detail is in
+  [walls-and-routes.md](walls-and-routes.md).
+
+  - *Finding the wall offline.* The device remembers the id of the wall it last
+    reached, in settings, and forgets it when setup saves a different address.
+    Not looked up by address: identity is the MAC, and the address is what DHCP
+    hands to someone else.
+  - *State.* `WallUiState` is `Loading`, `Ready` or `Error`, and `Ready` carries
+    a `ControllerState` - `Connecting`, `Online` or `Offline` - beside the route.
+    `Error` is left for having no stored wall to fall back on.
+  - *Applying.* Explicit, with the wall following edits once applied until
+    different work is opened. A per-device **auto-apply** setting, on by
+    default, keeps every-tap-lights-a-hold for the children's devices and can
+    be turned off on the one used to build routes while someone climbs.
+  - *Coming back.* Neither push nor ask: reconnecting shows the work as not
+    applied, and the next deliberate change puts it up. Launching does the
+    same. The app only asks the controller again when the power button is
+    tapped - it does not retry by itself.
+  - *The indicator.* The power button has three shapes: filled (on), a solid
+    ring (off), and a dashed ring round a struck-through glyph (out of reach,
+    tap to try again). A spinner in a dashed ring while connecting.
+
 
 - **Phase 17** is the other half of the promise in
   [walls-and-routes.md](walls-and-routes.md): *opening one diffs its lit

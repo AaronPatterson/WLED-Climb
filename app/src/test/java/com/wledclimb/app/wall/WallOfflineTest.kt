@@ -10,12 +10,16 @@ package com.wledclimb.app.wall
 import com.wledclimb.app.FakeWledClient
 import com.wledclimb.app.FakeWledSettings
 import com.wledclimb.app.MainDispatcherRule
+import com.wledclimb.app.grid.Wall
+import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.storage.InMemoryRouteDao
 import com.wledclimb.app.storage.InMemoryWallDao
 import com.wledclimb.app.storage.RouteRepository
 import com.wledclimb.app.storage.WallRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -211,6 +215,61 @@ class WallOfflineTest {
         viewModel.refresh()
         runCurrent()
 
+        assertTrue(ready(viewModel).controller is ControllerState.Online)
+    }
+
+    @Test
+    fun `nothing asks the controller again until someone does`() = runTest {
+        // The app does not retry by itself: a wall coming back is for whoever
+        // holds the device to act on.
+        val stores = Stores()
+        stores.reachedOnceThenLost()
+        val viewModel = stores.open()
+        runCurrent()
+        stores.client.failWith = null
+        val asked = stores.client.getWallCount
+
+        advanceTimeBy(10 * 60 * 1000L)
+        runCurrent()
+
+        assertEquals(asked, stores.client.getWallCount)
+        assertEquals(unreachable, ready(viewModel).controller)
+    }
+
+    @Test
+    fun `asking again while already asking does not ask twice`() = runTest {
+        val stores = Stores()
+        stores.reachedOnceThenLost()
+        val gate = CompletableDeferred<Unit>()
+        var holding = false
+        val slowClient = object : WledClient by stores.client {
+            override suspend fun getWall(): Wall {
+                if (holding) gate.await()
+                return stores.client.getWall()
+            }
+        }
+        val viewModel = WallViewModel(
+            client = slowClient,
+            walls = WallRepository(stores.wallDao),
+            routes = RouteRepository(stores.routeDao) { 1000L },
+            settings = stores.settings,
+            controllerAddress = "http://wall.test"
+        )
+        runCurrent()
+        assertEquals(unreachable, ready(viewModel).controller)
+        stores.client.failWith = null
+        holding = true
+        val asked = stores.client.getWallCount
+
+        viewModel.refresh()
+        runCurrent()
+        assertEquals(ControllerState.Connecting, ready(viewModel).controller)
+        viewModel.refresh()
+        runCurrent()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(asked + 1, stores.client.getWallCount)
         assertTrue(ready(viewModel).controller is ControllerState.Online)
     }
 

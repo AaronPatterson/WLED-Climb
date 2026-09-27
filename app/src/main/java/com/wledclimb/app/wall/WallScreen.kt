@@ -217,6 +217,7 @@ fun WallScreen(
                     brightnessOpen = brightnessOpen,
                     onBrightnessOpenChange = { brightnessOpen = it },
                     onToggle = onToggle,
+                    onReconnect = onRetry,
                     onBrightnessChange = onBrightnessChange,
                     onChangeController = onChangeController,
                     autoApply = state.autoApply,

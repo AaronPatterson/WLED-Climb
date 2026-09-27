@@ -194,8 +194,14 @@ class WallViewModel(
      * The stored wall comes first so that a controller out of reach costs
      * nothing but the controller: the grid, the routes and whatever was being
      * built are all on this device.
+     *
+     * Also what the power button does while the controller is out of reach,
+     * and the only way the app asks again - see [ControllerState.Offline].
      */
     fun refresh() {
+        // A second tap while the first is still being answered would only
+        // stack another round of timeouts behind it.
+        if ((_uiState.value as? WallUiState.Ready)?.controller is ControllerState.Connecting) return
         viewModelScope.launch {
             if (_uiState.value !is WallUiState.Ready) openStoredWall()
             connect()
