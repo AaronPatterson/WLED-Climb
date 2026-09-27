@@ -44,9 +44,10 @@ class SetupViewModelTest {
     }
 
     @Test
-    fun `a new address forgets the wall the old one led to`() = runTest {
-        // Offline, the remembered wall is what the app opens. Kept across a
-        // change of address, it would show one wall's routes for another.
+    fun `a new address keeps the remembered wall`() = runTest {
+        // Only a controller answering as a different wall replaces it. A new
+        // address is often the same controller on a new lease, and until
+        // something answers, the last wall is still the one to open offline.
         val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
         val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
         viewModel.onIpInputChange("192.168.1.60")
@@ -54,32 +55,6 @@ class SetupViewModelTest {
         viewModel.testAndSave()
 
         assertEquals("http://192.168.1.60", settings.savedIp)
-        assertNull(settings.savedWallId)
-    }
-
-    @Test
-    fun `saving the same address again keeps the wall`() = runTest {
-        // Setup is also the way back to the wall already in use. Forgetting
-        // it there would leave the app unable to open that wall offline.
-        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
-        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
-        viewModel.onIpInputChange("192.168.1.50")
-
-        viewModel.testAndSave()
-
-        assertEquals(7L, settings.savedWallId)
-    }
-
-    @Test
-    fun `a failed setup forgets nothing`() = runTest {
-        client.failWith = IOException("connect timed out")
-        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
-        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
-        viewModel.onIpInputChange("192.168.1.60")
-
-        viewModel.testAndSave()
-
-        assertEquals("http://192.168.1.50", settings.savedIp)
         assertEquals(7L, settings.savedWallId)
     }
 

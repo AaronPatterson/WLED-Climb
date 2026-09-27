@@ -17,9 +17,13 @@ interface WledSettings {
     suspend fun saveWledIp(ip: String)
 
     /**
-     * The stored wall the controller at [wledIp] turned out to be, the last
-     * time it answered. Null before it has ever answered, and after the
-     * address changes.
+     * The stored wall this device last reached. Null before any controller
+     * has answered.
+     *
+     * Kept when setup saves a different address, and replaced only when a
+     * controller answers as a different wall. A new address is often the same
+     * controller after its lease moved, and the wall that answers - identified
+     * by its MAC - is what decides, not the address it was typed in as.
      *
      * This is what lets the app open a wall with no controller in reach. A
      * wall is identified by the controller's MAC, and the MAC can only be
