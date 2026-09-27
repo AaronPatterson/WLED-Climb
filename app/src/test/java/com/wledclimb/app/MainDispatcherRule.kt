@@ -1,5 +1,13 @@
+// Every test here drives coroutines through a test dispatcher, and the whole
+// of kotlinx-coroutines-test is marked experimental - runTest, runCurrent,
+// UnconfinedTestDispatcher, setMain. There is no non-experimental way to write
+// these tests, so the opt-in is an acknowledgement rather than a choice, and
+// it belongs at the top of the file rather than repeated at every call site.
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.wledclimb.app
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
