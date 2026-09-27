@@ -68,6 +68,50 @@ upload the result anyway, and a fresh copy beats a possibly stale one. This is
 also why the column is not named after the gap file - a name suggesting it could
 be written back would be an invitation to that bug.
 
+## Moving routes between installs
+
+Routes live in the app's private database, which nothing outside the app can
+read - not another install, not a file manager, not `adb` on an unrooted phone.
+That makes a reinstall, a new phone, or the debug build and the release build
+sitting side by side into three ways to lose work that took real time on a real
+wall.
+
+**Export** writes every route for the connected wall to a JSON file through the
+system document picker. **Import** reads one back. The picker rather than a path
+the app picks: the file is the person's, it lands somewhere they keep things, and
+the app needs no storage permission at all - it is handed one file and can see
+nothing else.
+
+The file carries the holds in exactly the text the database stores, `x,y:SLOT`.
+That is what makes it a backup rather than a snapshot: coordinates survive the
+wall being rebuilt from a different gap file, and palette slots survive the
+palette being retuned or replaced (Phase 15). A file written today still means
+something after either has happened.
+
+Row ids and `wallId` are deliberately left out. They identify rows in one
+database and nothing in another, and carrying them would invite an import to
+overwrite by id - which is how a restore becomes data loss.
+
+**Importing merges and never removes or overwrites.** The usual reason to restore
+is that routes exist in two places and both are wanted, so:
+
+- The same name with the same holds is the same route arriving twice, and is
+  skipped. Importing a file again is therefore harmless.
+- The same name with *different* holds comes in numbered - `Warmup (2)` - rather
+  than overwriting what is here or hiding behind a duplicate name.
+- Anything else is added.
+
+A backup of another wall is refused outright, matched on the controller MAC.
+Holds are positions on a specific wall, so restoring one wall's routes onto
+another produces routes that are wrong rather than routes that are stale, and
+nothing afterwards could tell the difference.
+
+JSON rather than the database file itself, for three reasons: a database file
+carries Room's schema identity hash, so restoring one into an app built from
+different source fails as "routes cannot be saved for this wall"; it would
+replace rather than merge; and JSON is legible, which matters for a format whose
+job is to still be readable later.
+
 ## Open questions
 
 - **What "last selected route" survives.** Process death, certainly. Whether it

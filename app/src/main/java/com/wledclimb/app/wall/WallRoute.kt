@@ -35,6 +35,19 @@ fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
     )
     val wallState by wallViewModel.uiState.collectAsState()
     val routes by wallViewModel.savedRoutes.collectAsState()
+
+    // Turning the picked file into bytes happens here rather than in the view
+    // model: a Uri is only meaningful next to a ContentResolver, and the view
+    // model is the part worth being able to test without one.
+    val resolver = context.contentResolver
+    val backupResult by wallViewModel.backupResult.collectAsState()
+    backupResult?.let { outcome ->
+        RouteBackupOutcomeDialog(
+            outcome = outcome,
+            onDismiss = wallViewModel::clearBackupResult
+        )
+    }
+
     WallScreen(
         state = wallState,
         routes = routes,
@@ -50,6 +63,8 @@ fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
         onLoadRoute = wallViewModel::loadRoute,
         onSaveRoute = wallViewModel::saveRoute,
         onRenameRoute = wallViewModel::renameRoute,
-        onDeleteRoute = wallViewModel::deleteRoute
+        onDeleteRoute = wallViewModel::deleteRoute,
+        onExportRoutes = { uri -> wallViewModel.exportRoutes { resolver.openOutputStream(uri) } },
+        onImportRoutes = { uri -> wallViewModel.importRoutes { resolver.openInputStream(uri) } }
     )
 }

@@ -39,6 +39,7 @@ I would like to build an app to control a climbing wall that has LED lights. The
 - Need to be able to name the route.
 - Need to be able to put notes or a description on the route.
 - Would be nice to have a preview or picture associated with the route so it is easily identifiable in the UI.
+- Routes must be movable off a device, so a reinstall or a new phone does not lose them. See [walls-and-routes.md](walls-and-routes.md#moving-routes-between-installs).
 
 ## Wall visualization
 

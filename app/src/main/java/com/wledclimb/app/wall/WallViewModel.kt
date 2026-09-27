@@ -9,12 +9,18 @@ import com.wledclimb.app.grid.Wall
 import com.wledclimb.app.network.WledIdentity
 import com.wledclimb.app.network.WledIdentityException
 import com.wledclimb.app.network.WledClient
+import com.wledclimb.app.grid.fingerprint
+import com.wledclimb.app.storage.RouteBackup
+import com.wledclimb.app.storage.RouteBackupException
 import com.wledclimb.app.storage.RouteHolds
 import com.wledclimb.app.storage.RouteRepository
 import com.wledclimb.app.storage.StoredRoute
 import com.wledclimb.app.storage.StoredWall
 import com.wledclimb.app.storage.WallRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -29,6 +35,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 
 private const val TAG = "WallViewModel"
 
@@ -41,7 +50,12 @@ class WallViewModel(
     private val client: WledClient,
     private val walls: WallRepository,
     private val routes: RouteRepository,
-    private val controllerAddress: String
+    private val controllerAddress: String,
+    /**
+     * Where reading and writing a backup file happens. Injected so tests can
+     * run it on their own dispatcher and assert without waiting on real disk.
+     */
+    private val io: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WallUiState>(WallUiState.Connecting)
@@ -74,6 +88,14 @@ class WallViewModel(
      * queueing behind it, so the wall still tracks the finger but is asked at a
      * rate it can answer.
      */
+    private val _backupResult = MutableStateFlow<RouteBackupOutcome?>(null)
+
+    /**
+     * The last export or import, until the screen has shown it. Null the rest
+     * of the time - this is a message waiting to be read, not a status.
+     */
+    val backupResult: StateFlow<RouteBackupOutcome?> = _backupResult.asStateFlow()
+
     private val brightnessRequests = Channel<Int>(Channel.CONFLATED)
 
     /**
@@ -445,6 +467,78 @@ class WallViewModel(
      * on/off toggle, rather than silently leaving the app and the wall
      * showing different things.
      */
+    /**
+     * Writes this wall's routes to [open]'s stream and closes it.
+     *
+     * Takes a stream rather than the file the person picked: a Uri, and what it
+     * takes to turn one into bytes, belong to the Android framework, and putting
+     * that here would make every test of this class need a ContentResolver.
+     */
+    fun exportRoutes(open: () -> OutputStream?) {
+        val current = _uiState.value as? WallUiState.Connected ?: return
+        val wallId = current.wallId ?: return
+
+        viewModelScope.launch {
+            _backupResult.value = try {
+                val wall = walls.byId(wallId)
+                    ?: throw IOException("wall $wallId is not stored")
+                val document = routes.backup(wall)
+                withContext(io) {
+                    val stream = open() ?: throw IOException("no stream for the chosen file")
+                    stream.use { it.write(document.toByteArray()) }
+                }
+                // The list the UI is showing is the list just written, so this
+                // reports what someone can see rather than a second count that
+                // could disagree with it.
+                RouteBackupOutcome.Exported(savedRoutes.value.size)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "exportRoutes() failed", e)
+                RouteBackupOutcome.Failed(null)
+            }
+        }
+    }
+
+    /** Adds the routes in [open]'s stream to this wall - see [RouteRepository.importInto]. */
+    fun importRoutes(open: () -> InputStream?) {
+        val current = _uiState.value as? WallUiState.Connected ?: return
+        val wallId = current.wallId ?: return
+
+        viewModelScope.launch {
+            _backupResult.value = try {
+                val wall = walls.byId(wallId)
+                    ?: throw IOException("wall $wallId is not stored")
+                val text = withContext(io) {
+                    val stream = open() ?: throw IOException("no stream for the chosen file")
+                    stream.use { it.readBytes() }
+                }
+                RouteBackupOutcome.Imported(
+                    routes.importInto(
+                        wall = wall,
+                        file = RouteBackup.decode(text.decodeToString()),
+                        currentFingerprint = current.wall.fingerprint
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RouteBackupException) {
+                // Not an error to log loudly: picking the wrong file is an
+                // ordinary thing to do, and the screen is about to say which.
+                Log.i(TAG, "importRoutes() refused a file: ${e.problem}")
+                RouteBackupOutcome.Failed(e.problem)
+            } catch (e: Exception) {
+                Log.e(TAG, "importRoutes() failed", e)
+                RouteBackupOutcome.Failed(null)
+            }
+        }
+    }
+
+    /** Called once the outcome has been shown, so it is not shown twice. */
+    fun clearBackupResult() {
+        _backupResult.value = null
+    }
+
     private fun showAndPush(
         current: WallUiState.Connected,
         holds: Map<Int, HoldColor>,

@@ -39,6 +39,13 @@ import com.wledclimb.app.grid.Wall
  */
 class WallRepository(private val walls: WallDao) {
 
+    /**
+     * The stored wall behind an id the UI already holds. Needed by anything
+     * that has to name the wall rather than merely write to it - a backup
+     * carries the controller MAC so it can only be restored onto the same wall.
+     */
+    suspend fun byId(id: Long): StoredWall? = walls.byId(id)
+
     /** Records which route this wall was last showing, so it can be reselected. */
     suspend fun selectRoute(wallId: Long, routeId: Long?) =
         walls.setLastSelectedRoute(wallId, routeId)
