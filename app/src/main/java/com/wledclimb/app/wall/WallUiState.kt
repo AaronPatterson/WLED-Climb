@@ -3,7 +3,14 @@ package com.wledclimb.app.wall
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.grid.Wall
 
-/** UI-facing state of the wall connection. */
+/**
+ * UI-facing state of the wall screen.
+ *
+ * About what there is to show rather than about the network. A wall the app
+ * knows can be shown, edited and saved with no controller in reach, so the
+ * state that carries one is not named after being connected to anything - that
+ * belongs to [Showing.link], which can say the app is deliberately detached.
+ */
 sealed interface WallUiState {
     data object Connecting : WallUiState
 
@@ -38,7 +45,7 @@ sealed interface WallUiState {
      * wall is being controlled. It becomes more than decoration once there is
      * more than one wall to be connected to.
      */
-    data class Connected(
+    data class Showing(
         val on: Boolean,
         val brightness: Int,
         val name: String,

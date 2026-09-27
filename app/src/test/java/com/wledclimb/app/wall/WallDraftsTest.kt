@@ -50,9 +50,9 @@ class WallDraftsTest {
         )
     }
 
-    private fun connected(viewModel: WallViewModel): WallUiState.Connected =
-        viewModel.uiState.value as? WallUiState.Connected
-            ?: error("Expected Connected but was " + viewModel.uiState.value)
+    private fun connected(viewModel: WallViewModel): WallUiState.Showing =
+        viewModel.uiState.value as? WallUiState.Showing
+            ?: error("Expected Showing but was " + viewModel.uiState.value)
 
     @Test
     fun `an edit to a saved route comes back unsaved, not applied to the route`() = runTest {

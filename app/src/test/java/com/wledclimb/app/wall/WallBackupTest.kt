@@ -120,7 +120,7 @@ class WallBackupTest {
         destination.viewModel.loadRoute(imported.id)
         runCurrent()
 
-        val state = destination.viewModel.uiState.value as WallUiState.Connected
+        val state = destination.viewModel.uiState.value as WallUiState.Showing
         assertEquals(mapOf(3 to HoldColor.Blue), state.litHolds)
     }
 

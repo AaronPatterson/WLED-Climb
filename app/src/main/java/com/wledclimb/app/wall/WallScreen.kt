@@ -133,7 +133,7 @@ fun WallScreen(
     // Saving a route that already has a name just saves it; work with no name
     // yet has to be given one. Defined once because the bar and the routes
     // panel both offer it, and two copies would eventually disagree.
-    val openRoute = (state as? WallUiState.Connected)
+    val openRoute = (state as? WallUiState.Showing)
         ?.let { s -> routes.firstOrNull { it.id == s.selectedRouteId } }
     val save = {
         if (openRoute == null) {
@@ -197,7 +197,7 @@ fun WallScreen(
     // Anything that takes the current work off the wall asks first when there
     // is unsaved work to lose, and otherwise simply happens.
     val start = { action: PendingAction ->
-        if ((state as? WallUiState.Connected)?.modified == true) {
+        if ((state as? WallUiState.Showing)?.modified == true) {
             dialog = RouteDialog.UnsavedChanges(action)
         } else {
             run(action)
@@ -206,7 +206,7 @@ fun WallScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            if (state is WallUiState.Connected) {
+            if (state is WallUiState.Showing) {
                 WallTopBar(
                     modifier = Modifier.onGloballyPositioned { topBarHeight = it.size.height },
                     name = state.name,
@@ -331,7 +331,7 @@ fun WallScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    ConnectedContent(
+                                    WallContent(
                                         state = state,
                                         routeName = openRoute?.name,
                                         onSave = save,
@@ -357,7 +357,7 @@ fun WallScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     // Exhaustive without an else: the branch above narrows
-                    // state to everything that is not Connected.
+                    // state to everything that is not showing a wall.
                     when (state) {
                         is WallUiState.Connecting -> ConnectingContent()
                         is WallUiState.Error ->
@@ -381,7 +381,7 @@ fun WallScreen(
         // and since it closes on a tap, aiming at a hold slid the grid up
         // under the finger before the tap resolved, painting the hold below
         // the one intended.
-        if (state is WallUiState.Connected && brightnessOpen) {
+        if (state is WallUiState.Showing && brightnessOpen) {
             BrightnessControl(
                 brightness = state.brightness,
                 enabled = !state.busy,
@@ -391,7 +391,7 @@ fun WallScreen(
         }
     }
 
-    if (state is WallUiState.Connected) {
+    if (state is WallUiState.Showing) {
         dialog?.let { open ->
             RouteDialogHost(
                 dialog = open,
@@ -435,8 +435,8 @@ private fun ColumnScope.ConnectingContent() {
  */
 
 @Composable
-private fun ColumnScope.ConnectedContent(
-    state: WallUiState.Connected,
+private fun ColumnScope.WallContent(
+    state: WallUiState.Showing,
     routeName: String?,
     onSave: () -> Unit,
     onSaveAs: () -> Unit,

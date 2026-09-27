@@ -71,7 +71,7 @@ class WallViewModel(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val savedRoutes: StateFlow<List<StoredRoute>> = _uiState
-        .map { (it as? WallUiState.Connected)?.wallId }
+        .map { (it as? WallUiState.Showing)?.wallId }
         .distinctUntilChanged()
         .flatMapLatest { wallId ->
             if (wallId == null) flowOf(emptyList()) else routes.forWall(wallId)
@@ -125,10 +125,10 @@ class WallViewModel(
     }
 
     private suspend fun applyBrightness(brightness: Int) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         try {
             val status = client.setBrightness(brightness = brightness, on = current.on)
-            val latest = _uiState.value as? WallUiState.Connected ?: return
+            val latest = _uiState.value as? WallUiState.Showing ?: return
             // Power is always worth taking from the reply. Brightness only when
             // nothing newer has been asked for, or a slow reply would drag the
             // value back to where the finger has already left.
@@ -166,7 +166,7 @@ class WallViewModel(
                     val wall = async { client.getWall() }.await()
                     val stored = storedWall(identity.await(), wall)
                     restore = stored
-                    WallUiState.Connected(
+                    WallUiState.Showing(
                         on = status.await().on,
                         brightness = status.await().brightness,
                         name = identity.await().name,
@@ -224,7 +224,7 @@ class WallViewModel(
      * it knows about beats displaying a guess.
      */
     private suspend fun restoreWorkingState(stored: StoredWall) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         val route = stored.lastSelectedRouteId?.let { routes.byId(it) }
 
         // Empty when the route has been deleted, here or from another device.
@@ -234,13 +234,13 @@ class WallViewModel(
         if (working.isEmpty() && route == null) return
 
         _uiState.value = current.copy(selectedRouteId = route?.id)
-        val latest = _uiState.value as? WallUiState.Connected ?: return
+        val latest = _uiState.value as? WallUiState.Showing ?: return
         showAndPush(latest, RouteHolds.parseSegments(working, latest.wall), "restore")
     }
 
     /** Picks the colour the next tapped hold will be painted in. */
     fun selectColor(color: HoldColor) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         _uiState.value = current.copy(selectedColor = color)
     }
 
@@ -252,7 +252,7 @@ class WallViewModel(
      * to explain. Tapping one showing a different colour repaints it.
      */
     fun toggleHold(segmentIndex: Int) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
 
         val updated = current.litHolds.toMutableMap()
         if (updated[segmentIndex] == current.selectedColor) {
@@ -270,7 +270,7 @@ class WallViewModel(
      * request per hold, and a lot of tapping for anything but a short route.
      */
     fun clearWall() {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         if (current.litHolds.isEmpty()) return
 
         showAndPush(current, emptyMap(), "clearWall()")
@@ -284,7 +284,7 @@ class WallViewModel(
      * action being unavailable rather than by failing here.
      */
     fun saveRoute(name: String, routeId: Long? = null) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         val wallId = current.wallId ?: return
 
         viewModelScope.launch {
@@ -300,7 +300,7 @@ class WallViewModel(
                 // counting as unsaved work: the flag in state has to be
                 // cleared as well as the baseline it is judged against.
                 savedHolds = RouteHolds.serializeSegments(current.litHolds, current.wall)
-                (_uiState.value as? WallUiState.Connected)?.let {
+                (_uiState.value as? WallUiState.Showing)?.let {
                     _uiState.value = it.copy(modified = false)
                 }
                 select(saved)
@@ -321,7 +321,7 @@ class WallViewModel(
      * does.
      */
     fun loadRoute(routeId: Long) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
 
         viewModelScope.launch {
             val holds = try {
@@ -338,7 +338,7 @@ class WallViewModel(
             // edit of whatever was on the wall a moment ago.
             savedHolds = routes.byId(routeId)?.holds.orEmpty()
             select(routeId)
-            val latest = _uiState.value as? WallUiState.Connected ?: return@launch
+            val latest = _uiState.value as? WallUiState.Showing ?: return@launch
             showAndPush(latest, holds, "loadRoute($routeId)")
         }
     }
@@ -352,12 +352,12 @@ class WallViewModel(
      * emptied.
      */
     fun newRoute() {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
 
         viewModelScope.launch {
             savedHolds = ""
             select(null)
-            val latest = _uiState.value as? WallUiState.Connected ?: return@launch
+            val latest = _uiState.value as? WallUiState.Showing ?: return@launch
             showAndPush(latest, emptyMap(), "newRoute()")
         }
     }
@@ -372,7 +372,7 @@ class WallViewModel(
      * behind the edits.
      */
     fun revertRoute() {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         if (!current.modified) return
 
         val open = current.selectedRouteId
@@ -380,7 +380,7 @@ class WallViewModel(
     }
 
     private suspend fun clearDraft() {
-        val wallId = (_uiState.value as? WallUiState.Connected)?.wallId ?: return
+        val wallId = (_uiState.value as? WallUiState.Showing)?.wallId ?: return
         try {
             walls.saveDraft(wallId, null)
         } catch (e: CancellationException) {
@@ -426,14 +426,14 @@ class WallViewModel(
                 return@launch
             }
 
-            val current = _uiState.value as? WallUiState.Connected ?: return@launch
+            val current = _uiState.value as? WallUiState.Showing ?: return@launch
             if (current.selectedRouteId != routeId) return@launch
 
             // Baseline first, so the clear that follows reads as unmodified
             // rather than as an edit of the route that has just gone.
             savedHolds = ""
             select(null)
-            val latest = _uiState.value as? WallUiState.Connected ?: return@launch
+            val latest = _uiState.value as? WallUiState.Showing ?: return@launch
             showAndPush(latest, emptyMap(), "deleteRoute($routeId)")
         }
     }
@@ -446,7 +446,7 @@ class WallViewModel(
      * surfaced.
      */
     private suspend fun select(routeId: Long?) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         _uiState.value = current.copy(selectedRouteId = routeId)
         val wallId = current.wallId ?: return
         try {
@@ -475,7 +475,7 @@ class WallViewModel(
      * that here would make every test of this class need a ContentResolver.
      */
     fun exportRoutes(open: () -> OutputStream?) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         val wallId = current.wallId ?: return
 
         viewModelScope.launch {
@@ -502,7 +502,7 @@ class WallViewModel(
 
     /** Adds the routes in [open]'s stream to this wall - see [RouteRepository.importInto]. */
     fun importRoutes(open: () -> InputStream?) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         val wallId = current.wallId ?: return
 
         viewModelScope.launch {
@@ -540,7 +540,7 @@ class WallViewModel(
     }
 
     private fun showAndPush(
-        current: WallUiState.Connected,
+        current: WallUiState.Showing,
         holds: Map<Int, HoldColor>,
         description: String
     ) {
@@ -588,7 +588,7 @@ class WallViewModel(
      * survives a brightness change, so long as brightness never reaches zero.
      */
     fun setBrightness(brightness: Int) {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         // A drag reports once per frame, and consecutive frames routinely land
         // on the same integer once the slider's float is truncated - a 2s drag
         // at 120Hz reports 250 times across at most 248 distinct values. The
@@ -605,7 +605,7 @@ class WallViewModel(
     }
 
     fun toggleWall() {
-        val current = _uiState.value as? WallUiState.Connected ?: return
+        val current = _uiState.value as? WallUiState.Showing ?: return
         if (current.busy) return
         _uiState.value = current.copy(busy = true)
 
@@ -619,7 +619,7 @@ class WallViewModel(
                 if (status.on && current.litHolds.isNotEmpty()) {
                     client.setHoldColors(pixelCount = current.wall.segmentSize, lit = current.litHolds.toHex())
                 }
-                // copy() rather than a fresh Connected, so the route stays put.
+                // copy() rather than a fresh Showing, so the route stays put.
                 current.copy(on = status.on, brightness = status.brightness, busy = false)
             } catch (e: CancellationException) {
                 throw e

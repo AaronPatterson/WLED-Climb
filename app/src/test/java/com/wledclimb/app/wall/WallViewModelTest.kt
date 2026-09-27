@@ -45,9 +45,9 @@ class WallViewModelTest {
         controllerAddress = "http://wall.test"
     )
 
-    private fun connectedState(viewModel: WallViewModel): WallUiState.Connected =
-        viewModel.uiState.value as? WallUiState.Connected
-            ?: error("Expected Connected but was ${viewModel.uiState.value}")
+    private fun connectedState(viewModel: WallViewModel): WallUiState.Showing =
+        viewModel.uiState.value as? WallUiState.Showing
+            ?: error("Expected Showing but was ${viewModel.uiState.value}")
 
     @Test
     fun `loads power state and grid layout on creation`() = runTest {
@@ -127,7 +127,7 @@ class WallViewModelTest {
         firstReply.complete(Unit)
         runCurrent()
 
-        val state = viewModel.uiState.value as WallUiState.Connected
+        val state = viewModel.uiState.value as WallUiState.Showing
         assertEquals("the newer value should survive the older reply", 240, state.brightness)
     }
 
@@ -148,11 +148,11 @@ class WallViewModelTest {
         runCurrent()
 
         val after = viewModel.uiState.value
-        assertTrue("expected to stay connected, was $after", after is WallUiState.Connected)
+        assertTrue("expected to stay connected, was $after", after is WallUiState.Showing)
         assertEquals(
             "the route should survive a failed brightness change",
             1,
-            (after as WallUiState.Connected).litHolds.size
+            (after as WallUiState.Showing).litHolds.size
         )
     }
 
@@ -209,7 +209,7 @@ class WallViewModelTest {
         client.failWith = null
         viewModel.refresh()
 
-        assertTrue(viewModel.uiState.value is WallUiState.Connected)
+        assertTrue(viewModel.uiState.value is WallUiState.Showing)
     }
 
     @Test
