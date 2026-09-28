@@ -266,6 +266,13 @@ dependencies {
     // at compile time, but that is not the same as running them - nothing there
     // checks that a cascade deletes, or that a Flow re-emits when a row changes.
     testImplementation("org.robolectric:robolectric:4.17")
+    // Drives composables in local unit tests, on Robolectric rather than a
+    // device. Every defect found in the rename field so far has been a
+    // Compose state-lifecycle bug - state keyed on the wrong thing, surviving
+    // when it should reset - which is invisible to a test that only calls
+    // functions. Version comes from the Compose BOM above.
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("androidx.test:core-ktx:1.7.0")
     testImplementation("androidx.room:room-testing:2.8.5")
 }
