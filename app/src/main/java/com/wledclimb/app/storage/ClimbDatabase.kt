@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import android.util.Log
 import com.wledclimb.app.BuildConfig
+import java.io.File
 
 /**
  * Saved walls and the routes drawn on them.
@@ -35,6 +37,11 @@ abstract class ClimbDatabase : RoomDatabase() {
     abstract fun routes(): RouteDao
 
     companion object {
+
+        private const val TAG = "ClimbDatabase"
+
+        internal const val DATABASE_NAME = "climb.db"
+
         @Volatile
         private var instance: ClimbDatabase? = null
 
@@ -51,29 +58,96 @@ abstract class ClimbDatabase : RoomDatabase() {
                 instance ?: open(context).also { instance = it }
             }
 
-        fun open(context: Context): ClimbDatabase =
+        /**
+         * The database, with an unopenable one moved out of the way first.
+         *
+         * Room refuses to open a file whose schema does not match what the app
+         * was built against, and until now that refusal was permanent: the
+         * open threw on every DAO call, the wall could not be stored, and the
+         * app ran with route saving silently switched off for good. There was
+         * no way out from inside the app, and the file it would not read was
+         * still sitting there being unreadable.
+         *
+         * Shipped as exactly that. A restore from Android's cloud backup put a
+         * database from an in-development schema onto a fresh install of
+         * 0.11.0, and every new install was in the same position: an app that
+         * looked fine and could never save a route.
+         *
+         * So a file that cannot be opened is renamed rather than kept or
+         * deleted. Renamed because deleting is the thing the comment below is
+         * right to refuse - routes are hours of somebody's effort, and a
+         * missed version bump should not be able to destroy them. Moved aside
+         * because leaving it in place destroys nothing and costs everything:
+         * the routes in a database Room will not open are already unreachable,
+         * and keeping the file there only means the app cannot save new ones
+         * either.
+         *
+         * The old file stays on disk, named for when it was set aside, where a
+         * migration written later can still reach it.
+         */
+        fun open(context: Context): ClimbDatabase {
+            val first = build(context)
+            return try {
+                // Forces the schema check now, rather than at whichever DAO
+                // call happens first. A few milliseconds once per process, and
+                // it buys a single place where the failure can be handled
+                // instead of one at every call site.
+                first.openHelper.writableDatabase
+                first
+            } catch (e: Exception) {
+                Log.e(TAG, "the database could not be opened; setting it aside", e)
+                try {
+                    first.close()
+                } catch (closing: Exception) {
+                    Log.e(TAG, "closing the unusable database failed", closing)
+                }
+                setAside(context)
+                build(context)
+            }
+        }
+
+        private fun build(context: Context): ClimbDatabase =
             Room.databaseBuilder(
                 context.applicationContext,
                 ClimbDatabase::class.java,
-                "climb.db"
+                DATABASE_NAME
             )
                 .apply {
                     // Debug builds throw the database away when the schema
                     // changes instead of refusing to open. On a development
                     // phone the schema moves whenever a branch is rebuilt, and
                     // Room's answer to a mismatch is to fail the open - which
-                    // this app reports, correctly but unhelpfully, as routes
-                    // not being saveable for this wall. That has now cost two
-                    // rounds of confusion, and it is never the interesting
-                    // failure on a device whose data is a handful of test
-                    // routes.
+                    // this app reported, correctly but unhelpfully, as routes
+                    // not being saveable for this wall.
                     //
-                    // Release builds keep the refusal. Silently deleting
-                    // someone's routes because a version number was missed is
-                    // a far worse outcome than an app that will not start
-                    // saving until the migration is written.
+                    // Release builds keep the refusal, and [open] catches it.
+                    // Silently deleting someone's routes because a version
+                    // number was missed is a far worse outcome than setting
+                    // the file aside where it can still be read later.
                     if (BuildConfig.DEBUG) fallbackToDestructiveMigration(dropAllTables = true)
                 }
                 .build()
+
+        /**
+         * Renames the database and its write-ahead log out of the way.
+         *
+         * All three files together: a stray -wal or -shm beside a fresh
+         * database is read as belonging to it, which would carry the problem
+         * straight into the replacement.
+         */
+        private fun setAside(context: Context) {
+            val stamp = System.currentTimeMillis()
+            for (suffix in listOf("", "-wal", "-shm")) {
+                val file = context.getDatabasePath(DATABASE_NAME + suffix)
+                if (!file.exists()) continue
+                val moved = File(file.parentFile, "unreadable-$stamp-${file.name}")
+                if (!file.renameTo(moved)) {
+                    // Nothing left to try: a fresh database cannot be created
+                    // while this one holds the name. Deleting it here would be
+                    // the silent destruction this is written to avoid.
+                    Log.e(TAG, "could not move ${file.name} aside")
+                }
+            }
+        }
     }
 }
