@@ -24,9 +24,10 @@ sealed interface WallUiState {
      * [controller].
      *
      * [litHolds] maps a grid position (`Wall.segmentIndexAt`) to the colour it's
-     * showing; holds absent from it are off. This is the route on screen, which
-     * is on the wall too when [applied]. Keyed by grid position, not by position
-     * along the LED strip - that's what WLED's per-pixel commands address.
+     * showing; holds absent from it are off. This is the route on screen, and
+     * while the controller is online every change to it is sent to the wall.
+     * Keyed by grid position, not by position along the LED strip - that's
+     * what WLED's per-pixel commands address.
      *
      * [selectedColor] is what the next tapped hold will be painted in.
      *
@@ -48,18 +49,6 @@ sealed interface WallUiState {
      * [name] is the controller's own name, as last reported, shown so the top
      * bar says which wall is being controlled. It becomes more than decoration
      * once there is more than one wall to be connected to.
-     *
-     * [applied] is true when the wall is showing [litHolds] and follows each
-     * edit to them. It is what makes applying a deliberate act: an edit with
-     * this false changes the screen and the draft, and leaves the wall with
-     * whatever someone else put there. Applying sets it, and it clears when
-     * the work on screen becomes something else - another route opened, a new
-     * one started - or when the app opens or the controller is lost, because
-     * the app cannot read the wall back to know whether what it last sent is
-     * still there.
-     *
-     * [autoApply] is this device's setting that every change goes straight to
-     * the wall, as though each one were applied. See `WledSettings.autoApply`.
      */
     data class Ready(
         val name: String,
@@ -69,9 +58,7 @@ sealed interface WallUiState {
         val selectedRouteId: Long? = null,
         val modified: Boolean = false,
         val litHolds: Map<Int, HoldColor> = emptyMap(),
-        val selectedColor: HoldColor = HoldColor.Red,
-        val applied: Boolean = false,
-        val autoApply: Boolean = true
+        val selectedColor: HoldColor = HoldColor.Red
     ) : WallUiState {
 
         /** A power change is in flight, and the controls wait for it. */

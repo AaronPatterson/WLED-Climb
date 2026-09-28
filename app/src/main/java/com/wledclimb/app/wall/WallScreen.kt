@@ -100,8 +100,7 @@ fun WallScreen(
     onHoldTap: (segmentIndex: Int) -> Unit,
     onColorSelect: (HoldColor) -> Unit,
     onClearWall: () -> Unit,
-    onApplyRoute: () -> Unit,
-    onAutoApplyChange: (Boolean) -> Unit,
+    onPause: () -> Unit,
     onRetry: () -> Unit,
     onChangeController: () -> Unit,
     onNewRoute: () -> Unit,
@@ -218,10 +217,9 @@ fun WallScreen(
                     onBrightnessOpenChange = { brightnessOpen = it },
                     onToggle = onToggle,
                     onReconnect = onRetry,
+                    onPause = onPause,
                     onBrightnessChange = onBrightnessChange,
                     onChangeController = onChangeController,
-                    autoApply = state.autoApply,
-                    onAutoApplyChange = onAutoApplyChange,
                     // A wall that could not be stored has nowhere to put an
                     // imported route, and nothing to export.
                     canBackupRoutes = state.wallId != null,
@@ -343,7 +341,6 @@ fun WallScreen(
                                         openRoute?.let { dialog = RouteDialog.NameCopy(it.id) }
                                     },
                                         onReset = { dialog = RouteDialog.Reset },
-                                        onApply = onApplyRoute,
                                         onHoldTap = onHoldTap,
                                         onColorSelect = onColorSelect,
                                         onClearWall = onClearWall
@@ -447,7 +444,6 @@ private fun ColumnScope.ConnectedContent(
     onSave: () -> Unit,
     onSaveAs: () -> Unit,
     onReset: () -> Unit,
-    onApply: () -> Unit,
     onHoldTap: (segmentIndex: Int) -> Unit,
     onColorSelect: (HoldColor) -> Unit,
     onClearWall: () -> Unit
@@ -459,11 +455,8 @@ private fun ColumnScope.ConnectedContent(
     RouteActions(
         routeName = routeName,
         modified = state.modified,
-        applied = state.applied,
         enabled = !state.busy,
-        canApply = state.controller is ControllerState.Online,
         canSave = state.wallId != null,
-        onApply = onApply,
         onSave = onSave,
         onSaveAs = onSaveAs,
         onReset = onReset

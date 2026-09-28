@@ -6,8 +6,10 @@ tolerate that. For how routes are stored, see
 
 ## Requirements
 
-- There will be a gesture to apply a route to the wall. **Built** - see
-  "Applying" in [walls-and-routes.md](walls-and-routes.md).
+- There will be a gesture to apply a route to the wall. *Answered differently:
+  online, every change goes to the wall, and working offline is how to build a
+  route without disturbing the one being climbed - see "Applying" in
+  [walls-and-routes.md](walls-and-routes.md).*
 - Possibly a way to see that someone else has control, with an explicit action to
   take it over. Once taken over, applying a route might become automatic.
 

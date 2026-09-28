@@ -36,4 +36,16 @@ sealed interface ControllerState {
      * holding the device.
      */
     data class Offline(val problem: WallProblem) : ControllerState
+
+    /**
+     * Offline by choice: the controller may well be in reach, and this device
+     * has been told to leave it alone. Everything [Offline] allows, and for
+     * the same reason nothing reaches the wall - here, so that a route can be
+     * built while someone climbs the one already up.
+     *
+     * A state of its own rather than an [Offline] with a reason, because it
+     * asks something different of whoever is looking: this is waiting for
+     * them, where [Offline] is waiting for the controller.
+     */
+    data object Paused : ControllerState
 }

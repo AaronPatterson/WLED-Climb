@@ -194,19 +194,23 @@ Notes on the later phases:
     up by address: identity is the MAC, and the address is what DHCP hands to
     someone else.
   - *State.* `WallUiState` is `Loading`, `Ready` or `Error`, and `Ready` carries
-    a `ControllerState` - `Connecting`, `Online` or `Offline` - beside the route.
-    `Error` is left for having no stored wall to fall back on.
-  - *Applying.* Explicit, with the wall following edits once applied until
-    different work is opened. A per-device **auto-apply** setting, on by
-    default, keeps every-tap-lights-a-hold for the children's devices and can
-    be turned off on the one used to build routes while someone climbs.
-  - *Coming back.* Neither push nor ask: reconnecting shows the work as not
-    applied, and the next deliberate change puts it up. Launching does the
-    same. The app only asks the controller again when the power button is
-    tapped - it does not retry by itself.
-  - *The indicator.* The power button has three shapes: filled (on), a solid
-    ring (off), and a dashed ring round a struck-through glyph (out of reach,
-    tap to try again). A spinner in a dashed ring while connecting.
+    a `ControllerState` - `Connecting`, `Online`, `Offline` or `Paused` - beside
+    the route. `Error` is left for having no stored wall to fall back on.
+  - *Applying.* Not made explicit after all. Online, every change goes to the
+    wall, on every device. Building a route while someone climbs is done by
+    **working offline** instead: a long press on the power button, or the
+    menu, leaves the controller alone with it in reach, and the choice is
+    persisted so a relaunch cannot end it. An Apply button and a per-device
+    auto-apply setting were built first and removed: pausing covers the case
+    they existed for, more reliably, with one idea instead of two.
+  - *Coming back.* Deliberate, and it sends what is on screen: the app only
+    asks the controller again when the power button is tapped - it does not
+    retry by itself - and someone who taps to come back wants the wall to show
+    what they see. Launching sends nothing, since nobody asked.
+  - *The indicator.* The power button has four shapes: filled (on), a solid
+    ring (off), a dashed ring round a struck-through glyph (out of reach), and
+    a dashed ring round a pause glyph (working offline). Tapping either of the
+    last two reconnects. A spinner in a dashed ring while connecting.
 
 
 - **Phase 17** is the other half of the promise in
