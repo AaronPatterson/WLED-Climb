@@ -263,7 +263,12 @@ fun WallTopBar(
                         },
                         // An answer on its way would undo the pause - see
                         // WallViewModel.pause.
-                        enabled = controller != ControllerState.Connecting,
+                        // Paused keeps it live because the row is how you
+                        // come back. Offline disables it: see canPause in
+                        // PowerButton. The box stays unchecked there, because
+                        // working offline is then circumstance rather than
+                        // something anyone chose.
+                        enabled = controller is ControllerState.Online || paused,
                         onClick = {
                             menuOpen = false
                             if (paused) onReconnect() else onPause()
