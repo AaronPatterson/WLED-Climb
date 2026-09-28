@@ -1,11 +1,8 @@
 package com.wledclimb.app.wall
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,11 +30,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import android.net.Uri
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -78,6 +72,8 @@ fun WallTopBar(
     brightnessOpen: Boolean,
     onBrightnessOpenChange: (Boolean) -> Unit,
     onToggle: () -> Unit,
+    /** Asks the controller again after it was found out of reach. */
+    onReconnect: () -> Unit,
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
     /** Whether edits on this device go straight to the wall. */
@@ -95,7 +91,6 @@ fun WallTopBar(
     // Power and brightness are questions for the controller, and have no
     // answer while it is being asked or cannot be reached.
     val online = controller as? ControllerState.Online
-    val on = online?.on == true
     var menuOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     val backup = rememberRouteBackup(
@@ -167,42 +162,12 @@ fun WallTopBar(
                         contentDescription = stringResource(R.string.wall_brightness)
                     )
                 }
-                // The whole button lights up rather than just the glyph. A
-                // tinted outline was too quiet to answer "is the wall on?" from
-                // across a garage, which is the one question this control exists
-                // to answer without being tapped.
-                //
-                // The label still says which way it will go, because colour
-                // alone is not an answer for anyone who cannot see it.
-                val statusColour = if (on) WallStatusColors.on else WallStatusColors.off
-                IconButton(onClick = onToggle, enabled = enabled && online != null) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            // Filled when on, hollow when off: the difference
-                            // reads at a glance and does not rely on telling two
-                            // colours apart.
-                            .background(if (on) statusColour else Color.Transparent)
-                            .border(width = 2.dp, color = statusColour, shape = CircleShape)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_power),
-                            contentDescription = stringResource(
-                                if (on) R.string.wall_turn_off else R.string.wall_turn_on
-                            ),
-                            // On a filled circle the glyph has to contrast with
-                            // the fill, not match it.
-                            tint = if (on) {
-                                MaterialTheme.colorScheme.surface
-                            } else {
-                                statusColour
-                            },
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
+                PowerButton(
+                    controller = controller,
+                    enabled = enabled,
+                    onToggle = onToggle,
+                    onReconnect = onReconnect
+                )
 
                 // Last, and a different shape from the two beside it: these are
                 // things you do to the wall, this is a menu about the app.
