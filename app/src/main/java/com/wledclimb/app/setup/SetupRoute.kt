@@ -19,6 +19,13 @@ import kotlinx.coroutines.flow.filterIsInstance
 @Composable
 fun SetupRoute(
     currentUrl: String?,
+    /**
+     * Whether there is a wall behind this screen to go back to. Told rather
+     * than inferred from [currentUrl]: a saved address can exist while the
+     * practice wall is what is on screen, so having something to pre-fill says
+     * nothing about having somewhere to return to.
+     */
+    canCancel: Boolean,
     onSetupComplete: (String) -> Unit,
     onUseDemoWall: () -> Unit,
     onCancel: () -> Unit
@@ -40,7 +47,6 @@ fun SetupRoute(
     // Back leaves setup rather than the app, for the same reason the button
     // exists. Only when there is a working address behind it - on a first run
     // back should still close the app, because there is nothing else to show.
-    val canCancel = currentUrl != null
     BackHandler(enabled = canCancel, onBack = onCancel)
 
     val setupState by setupViewModel.uiState.collectAsState()
