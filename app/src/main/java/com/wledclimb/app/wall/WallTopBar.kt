@@ -153,22 +153,27 @@ fun WallTopBar(
                 }
             },
             actions = {
-                IconButton(
-                    onClick = { onBrightnessOpenChange(!brightnessOpen) },
-                    enabled = enabled && online != null
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_brightness),
-                        contentDescription = stringResource(R.string.wall_brightness)
+                // Absent on the practice wall rather than disabled. Both ask
+                // something of a controller, and a greyed pair of controls
+                // invites working out what is wrong with them when nothing is.
+                if (controller != ControllerState.Demo) {
+                    IconButton(
+                        onClick = { onBrightnessOpenChange(!brightnessOpen) },
+                        enabled = enabled && online != null
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_brightness),
+                            contentDescription = stringResource(R.string.wall_brightness)
+                        )
+                    }
+                    PowerButton(
+                        controller = controller,
+                        enabled = enabled,
+                        onToggle = onToggle,
+                        onReconnect = onReconnect,
+                        onPause = onPause
                     )
                 }
-                PowerButton(
-                    controller = controller,
-                    enabled = enabled,
-                    onToggle = onToggle,
-                    onReconnect = onReconnect,
-                    onPause = onPause
-                )
 
                 // Last, and a different shape from the two beside it: these are
                 // things you do to the wall, this is a menu about the app.

@@ -61,6 +61,11 @@ class WallViewModel(
     private val settings: WledSettings,
     private val controllerAddress: String,
     /**
+     * Opens the practice wall instead of reaching for a controller. Nothing
+     * asks [client] anything in this mode.
+     */
+    private val demo: Boolean = false,
+    /**
      * Where reading and writing a backup file happens. Injected so tests can
      * run it on their own dispatcher and assert without waiting on real disk.
      */
@@ -177,6 +182,10 @@ class WallViewModel(
      */
     private fun start() {
         viewModelScope.launch {
+            if (demo) {
+                openDemoWall()
+                return@launch
+            }
             openStoredWall()
             val current = _uiState.value as? WallUiState.Ready
             if (current != null && pausedBefore()) {
@@ -185,6 +194,37 @@ class WallViewModel(
             }
             connect(sendOnArrival = false)
         }
+    }
+
+    /**
+     * Shows the practice wall, and stops there.
+     *
+     * Deliberately does not record it as the wall this device last reached.
+     * That setting exists so a real wall can be reopened with its controller
+     * out of reach, and a practice wall is not one this device reached -
+     * writing it there would have the app open the practice wall next launch
+     * in place of the garage.
+     */
+    private suspend fun openDemoWall() {
+        _uiState.value = WallUiState.Loading
+        val stored = try {
+            walls.findOrCreateDemo()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "creating the practice wall failed", e)
+            null
+        } ?: return
+        val wall = HoldGrid.parse(stored.holdGrid, stored.width, stored.height) ?: return
+
+        savedHolds = ""
+        _uiState.value = WallUiState.Ready(
+            name = stored.name,
+            wall = wall,
+            controller = ControllerState.Demo,
+            wallId = stored.id
+        )
+        restoreWorkingState(stored)
     }
 
     /** Whether the device was paused when it was last used. */
@@ -216,6 +256,8 @@ class WallViewModel(
             ControllerState.Connecting -> return
             // Nothing to come back from. The button switches power then.
             is ControllerState.Online -> return
+            // Nothing to come back to.
+            ControllerState.Demo -> return
             else -> Unit
         }
         // Straight away rather than once the pause is cleared below: that
@@ -243,6 +285,8 @@ class WallViewModel(
         when (current.controller) {
             is ControllerState.Online, is ControllerState.Offline -> Unit
             ControllerState.Connecting, ControllerState.Paused -> return
+            // Already leaving a controller alone, there being none.
+            ControllerState.Demo -> return
         }
         _uiState.value = current.copy(controller = ControllerState.Paused)
         viewModelScope.launch { savePaused(true) }

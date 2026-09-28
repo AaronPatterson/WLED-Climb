@@ -57,6 +57,25 @@ class WallRepository(private val walls: WallDao) {
     suspend fun saveDraft(wallId: Long, draftHolds: String?) =
         walls.setDraft(wallId, draftHolds)
 
+    /**
+     * The practice wall, created the first time it is asked for.
+     *
+     * Goes through [findOrCreate] like a real wall, because it is one as far
+     * as everything downstream is concerned - it simply has no controller
+     * behind its MAC. The address is empty for the same reason: there is
+     * nothing to reach.
+     */
+    suspend fun findOrCreateDemo(): StoredWall? {
+        val wall = HoldGrid.parse(DemoWall.HOLD_GRID, DemoWall.WIDTH, DemoWall.HEIGHT)
+            ?: return null
+        return findOrCreate(
+            controllerMac = DemoWall.MAC,
+            name = DemoWall.NAME,
+            controllerAddress = "",
+            wall = wall
+        )
+    }
+
     suspend fun findOrCreate(
         controllerMac: String,
         name: String,

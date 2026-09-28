@@ -29,6 +29,7 @@ fun SetupScreen(
     state: SetupUiState,
     onIpInputChange: (String) -> Unit,
     onTestAndSave: () -> Unit,
+    onUseDemoWall: () -> Unit,
     onCancel: (() -> Unit)?
 ) {
     Column(
@@ -84,6 +85,17 @@ fun SetupScreen(
                     // above it. Setting an address is what someone came here
                     // to do; leaving is the way out rather than the offer.
                     //
+                    // Above leaving, below saving. Someone who has no wall to
+                    // type an address for has nothing else on this screen they
+                    // can do, and finding that out by failing to connect is a
+                    // worse way to learn it.
+                    TextButton(
+                        onClick = onUseDemoWall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text(text = stringResource(R.string.setup_try_practice_wall))
+                    }
+
                     // Null on a first run, where leaving would show a wall the
                     // app has no address for.
                     onCancel?.let { cancel ->

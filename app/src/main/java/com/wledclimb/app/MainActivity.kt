@@ -91,11 +91,17 @@ class MainActivity : ComponentActivity() {
                             is RootUiState.NeedsSetup -> SetupRoute(
                                 currentUrl = state.currentUrl,
                                 onSetupComplete = rootViewModel::onSetupComplete,
+                                onUseDemoWall = rootViewModel::onUseDemoWall,
                                 onCancel = rootViewModel::onSetupCancelled
                             )
 
                             is RootUiState.Ready -> WallRoute(
                                 wledBaseUrl = state.wledBaseUrl,
+                                onChangeController = rootViewModel::onChangeController
+                            )
+
+                            RootUiState.Demo -> WallRoute(
+                                wledBaseUrl = null,
                                 onChangeController = rootViewModel::onChangeController
                             )
                         }
