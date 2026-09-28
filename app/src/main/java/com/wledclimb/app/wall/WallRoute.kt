@@ -58,6 +58,8 @@ fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
         onBrightnessChange = wallViewModel::setBrightness,
         onColorSelect = wallViewModel::selectColor,
         onClearWall = wallViewModel::clearWall,
+        onApplyRoute = wallViewModel::applyRoute,
+        onAutoApplyChange = wallViewModel::setAutoApply,
         onRetry = wallViewModel::refresh,
         onChangeController = onChangeController,
         onNewRoute = wallViewModel::newRoute,

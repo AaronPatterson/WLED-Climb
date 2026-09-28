@@ -308,10 +308,11 @@ class WallRoutesTest {
     }
 
     @Test
-    fun `the restored route is pushed, not just displayed`() = runTest {
-        // The app cannot read the wall back - WLED answers /json/live with 501
-        // - so what it shows has to be what it sent, or the two can disagree
-        // with nothing to notice it.
+    fun `the restored route is shown but not pushed`() = runTest {
+        // The wall may be showing someone else's route by now, and the app
+        // cannot read it back to find out - WLED answers /json/live with 501.
+        // Opening the app is not a request to replace it, so the route is
+        // shown as not applied instead.
         val fixture = Fixture()
         runCurrent()
         fixture.viewModel.toggleHold(segmentIndex = 1)
@@ -320,7 +321,7 @@ class WallRoutesTest {
         runCurrent()
 
         val pushesBefore = fixture.client.pushedHolds.size
-        WallViewModel(
+        val reopened = WallViewModel(
             client = fixture.client,
             walls = WallRepository(fixture.wallDao),
             routes = RouteRepository(fixture.routeDao) { 1000L },
@@ -329,8 +330,9 @@ class WallRoutesTest {
         )
         runCurrent()
 
-        assertTrue(fixture.client.pushedHolds.size > pushesBefore)
-        assertEquals(mapOf(1 to HoldColor.Red.hex), fixture.client.pushedHolds.last())
+        assertEquals(mapOf(1 to HoldColor.Red), connected(reopened).litHolds)
+        assertFalse(connected(reopened).applied)
+        assertEquals(pushesBefore, fixture.client.pushedHolds.size)
     }
 
     @Test

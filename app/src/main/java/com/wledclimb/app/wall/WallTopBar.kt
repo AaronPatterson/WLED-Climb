@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,8 +41,12 @@ import androidx.compose.ui.graphics.Color
 import android.net.Uri
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -76,6 +81,9 @@ fun WallTopBar(
     onToggle: () -> Unit,
     onBrightnessChange: (Int) -> Unit,
     onChangeController: () -> Unit,
+    /** Whether edits on this device go straight to the wall. */
+    autoApply: Boolean,
+    onAutoApplyChange: (Boolean) -> Unit,
     onToggleRoutes: () -> Unit,
     /** False when this wall could not be stored, so it has no routes to move. */
     canBackupRoutes: Boolean,
@@ -251,8 +259,42 @@ fun WallTopBar(
                         }
                     )
 
-                    // These two act on the app rather than on the routes.
+                    // These act on the app rather than on the routes.
                     HorizontalDivider()
+
+                    // A setting for whoever holds this device, not for the
+                    // wall - so it is here, one tap from the wall, rather than
+                    // under configuration beside the controller address.
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.wall_auto_apply),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_auto_apply),
+                                contentDescription = null
+                            )
+                        },
+                        trailingIcon = {
+                            // Display only: the row is the control, and a
+                            // second target inside it would toggle twice.
+                            Checkbox(checked = autoApply, onCheckedChange = null)
+                        },
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        // The checkbox has no handler, so it reports no
+                        // state of its own; the row says it instead.
+                        modifier = Modifier.semantics {
+                            role = Role.Checkbox
+                            toggleableState = ToggleableState(autoApply)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onAutoApplyChange(!autoApply)
+                        }
+                    )
 
                     DropdownMenuItem(
                         text = {

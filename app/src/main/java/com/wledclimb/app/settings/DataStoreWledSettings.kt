@@ -1,6 +1,7 @@
 package com.wledclimb.app.settings
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "wled_settings")
 private val wledIpKey = stringPreferencesKey("wled_ip")
 private val lastWallIdKey = longPreferencesKey("last_wall_id")
+private val autoApplyKey = booleanPreferencesKey("auto_apply")
 
 /** [WledSettings] backed by Jetpack DataStore. */
 class DataStoreWledSettings(private val context: Context) : WledSettings {
@@ -28,5 +30,13 @@ class DataStoreWledSettings(private val context: Context) : WledSettings {
             it.remove(lastWallIdKey)
             if (id != null) it[lastWallIdKey] = id
         }
+    }
+
+    // Absent means never changed, which is on: that is how the app behaved
+    // before there was a choice, and it is what a child's device wants.
+    override val autoApply: Flow<Boolean> = context.dataStore.data.map { it[autoApplyKey] ?: true }
+
+    override suspend fun saveAutoApply(enabled: Boolean) {
+        context.dataStore.edit { it[autoApplyKey] = enabled }
     }
 }

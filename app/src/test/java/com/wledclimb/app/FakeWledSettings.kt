@@ -5,10 +5,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** In-memory [WledSettings], so tests don't need DataStore or a Context. */
-class FakeWledSettings(initialIp: String? = null, initialWallId: Long? = null) : WledSettings {
+class FakeWledSettings(
+    initialIp: String? = null,
+    initialWallId: Long? = null,
+    initialAutoApply: Boolean = true
+) : WledSettings {
 
     private val saved = MutableStateFlow(initialIp)
     private val savedWall = MutableStateFlow(initialWallId)
+    private val savedAutoApply = MutableStateFlow(initialAutoApply)
 
     override val wledIp: Flow<String?> = saved
 
@@ -26,5 +31,13 @@ class FakeWledSettings(initialIp: String? = null, initialWallId: Long? = null) :
 
     override suspend fun saveLastWallId(id: Long?) {
         savedWall.value = id
+    }
+
+    override val autoApply: Flow<Boolean> = savedAutoApply
+
+    val autoApplyEnabled: Boolean get() = savedAutoApply.value
+
+    override suspend fun saveAutoApply(enabled: Boolean) {
+        savedAutoApply.value = enabled
     }
 }

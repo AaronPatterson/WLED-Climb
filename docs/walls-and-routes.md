@@ -12,7 +12,8 @@ once, see [wall-sharing.md](wall-sharing.md).
   offline editing possible, and it means a new route can be created with no
   controller present.
 - Selecting a route does not apply it to the wall, even when the wall is on.
-  Applying is a deliberate action.
+  Applying is a deliberate action - unless the device has auto-apply on (see
+  below), which is how a child's device is meant to be set up.
 - The stored wall has to be checked against the real one on reconnect, because it
   can change - a new gap file, a resized matrix.
 - A wall changing must not silently destroy routes built against the old layout.
@@ -31,9 +32,40 @@ three shapes - `Connecting`, `Connected`, `Error` - with no way to express
 "showing a route while disconnected". Offline editing needs the layout persisted,
 and needs disconnection to stop being an error.
 
-**Applying becomes explicit.** Every hold tap currently pushes the whole route to
+**Applying becomes explicit.** Every hold tap used to push the whole route to
 the controller. Edit locally, apply deliberately is a different model, and it is
 the one that makes offline editing coherent.
+
+## Applying
+
+Built ahead of offline editing, because it answers the question offline raises
+first: what an edit means when it has not reached the wall.
+
+- **Apply** puts what is on screen on the wall, and from then on the wall
+  *follows* edits to that work. The tap-a-hold-and-it-lights feel survives, once
+  someone has said the wall is theirs.
+- The wall stops following when the work changes to something else: another
+  route opened, or a new one started. The applied route stays on the wall while
+  the next is built. A reset is not different work, so the wall follows it back.
+- **Opening the app never pushes.** The draft and last route come back on
+  screen, not on the wall. The app cannot read the wall back (`/json/live`
+  answers 501), so it cannot tell whether someone else's route is on it now,
+  and launching is not a request to replace one. The screen shows the route as
+  not applied, which is true.
+- Apply stays pressable once applied. There is no way to see that another
+  device has since put something else up, and applying again is how to take the
+  wall back.
+
+**Auto-apply** is a per-device setting, on unless turned off, from the menu.
+With it on, every change is as good as applied: tapped holds light, and opening
+a route puts it on the wall - which relaxes the requirement above, deliberately,
+for the device a six-year-old holds. With it off, the rules above apply. It is
+per device rather than per wall because it describes who is holding the device:
+the case it exists for is an adult building the next route while a child climbs
+the one already applied.
+
+Auto-apply does not extend to opening the app, for the same reason as above:
+the first edit or route opened puts the whole route up, not the launch.
 
 ## Fingerprinting
 
