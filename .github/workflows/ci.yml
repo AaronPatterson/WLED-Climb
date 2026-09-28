@@ -43,6 +43,27 @@ jobs:
       # that any test ran, since Gradle's test task prints nothing on success.
       # A suite reduced to zero tests passes exactly as loudly as one that
       # works, and this is what tells the two apart.
+      # The build regenerates app/schemas from the entities. Room does not
+      # object when a schema changes under a version that has already shipped -
+      # it rewrites the JSON in place, with a new identity hash and the same
+      # version number, and the build passes. The app then refuses to open the
+      # databases already on people's phones, which is a thing that is only
+      # discovered by someone opening the app.
+      #
+      # A test cannot catch it: any test reading app/schemas reads the file the
+      # build just rewrote, and agrees with it. What catches it is the file
+      # having changed at all.
+      - name: Schema matches the one committed
+        run: |
+          if ! git diff --quiet -- app/schemas; then
+            echo "::error::The database schema changed but app/schemas was not updated."
+            echo "An entity was edited without bumping CLIMB_DATABASE_VERSION and adding a"
+            echo "Migration. See the notes on ClimbDatabase. If the change is intended:"
+            echo "bump the version, write the migration, and commit the new schema JSON."
+            git --no-pager diff -- app/schemas
+            exit 1
+          fi
+
       - name: Summarise tests
         if: always()
         run: python3 scripts/ci/summarise-tests.py
