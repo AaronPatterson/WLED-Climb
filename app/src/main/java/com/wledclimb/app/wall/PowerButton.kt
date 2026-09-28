@@ -55,7 +55,12 @@ internal fun PowerButton(
     onPause: () -> Unit
 ) {
     val pauseLabel = stringResource(R.string.wall_work_offline)
-    val canPause = controller is ControllerState.Online || controller is ControllerState.Offline
+    // Not while the controller is already out of reach. Pausing there changes
+    // nothing anyone could observe - both states push nothing, and neither
+    // reconnects unattended - so the gesture would be a no-op that feels like
+    // a fault. Offline is waiting for the controller; there is no preference
+    // to express until it answers.
+    val canPause = controller is ControllerState.Online
     val onClick: (() -> Unit)? = when (controller) {
         is ControllerState.Online -> onToggle.takeIf { enabled }
         is ControllerState.Offline, ControllerState.Paused -> onReconnect
