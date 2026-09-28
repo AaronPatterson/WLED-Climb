@@ -70,7 +70,14 @@ internal fun RouteTitle(
     // The field reports itself unfocused once on first composition, before the
     // request below has been granted. Committing on that would close the field
     // the instant it opened - which is exactly what it did.
-    var hasFocused by remember(routeId) { mutableStateOf(false) }
+    //
+    // Keyed on [editing], so it is false again every time the field opens.
+    // Keyed on the route it was false only the first time per route: the
+    // second rename of the same route found this still true from the first,
+    // took that initial unfocused report as the field being dismissed, and
+    // closed it instantly. Which looked like a flash of the field and no way
+    // to rename anything twice without switching routes and back.
+    var hasFocused by remember(editing) { mutableStateOf(false) }
 
     val commit = {
         val trimmed = draft.text.trim()
