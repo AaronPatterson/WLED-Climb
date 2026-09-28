@@ -37,15 +37,16 @@ interface WledSettings {
     suspend fun saveLastWallId(id: Long?)
 
     /**
-     * Whether edits go straight to the wall, or wait on this device until
-     * they are applied. On unless turned off.
+     * Whether this device has been told to leave the controller alone - to
+     * work offline with the controller in reach, so a route can be built
+     * while someone climbs the one on the wall.
      *
-     * Per device rather than per wall, because it describes who holds the
-     * device, not the wall: a child's tablet wants a tapped hold to light up,
-     * and an adult building the next route while someone climbs the current
-     * one wants the wall left alone until they say so.
+     * Persisted rather than held in memory because the app being killed and
+     * relaunched must not end it. A relaunch that reconnected would put the
+     * half-built route on the wall at the next tap, which is precisely what
+     * pausing exists to prevent.
      */
-    val autoApply: Flow<Boolean>
+    val paused: Flow<Boolean>
 
-    suspend fun saveAutoApply(enabled: Boolean)
+    suspend fun savePaused(paused: Boolean)
 }

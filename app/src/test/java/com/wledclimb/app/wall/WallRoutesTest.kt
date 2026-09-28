@@ -268,18 +268,24 @@ class WallRoutesTest {
         // Losing the database costs saving routes. It must not cost the grid.
         val fixture = Fixture()
         fixture.wallDao.failWith = IllegalStateException("database unavailable")
-        fixture.viewModel.refresh()
+        val viewModel = WallViewModel(
+            client = fixture.client,
+            walls = WallRepository(fixture.wallDao),
+            routes = RouteRepository(fixture.routeDao) { 1000L },
+            settings = FakeWledSettings(),
+            controllerAddress = "http://wall.test"
+        )
         runCurrent()
 
-        assertNull(connected(fixture.viewModel).wallId)
+        assertNull(connected(viewModel).wallId)
 
-        fixture.viewModel.toggleHold(segmentIndex = 0)
+        viewModel.toggleHold(segmentIndex = 0)
         runCurrent()
-        assertEquals(mapOf(0 to HoldColor.Red), connected(fixture.viewModel).litHolds)
+        assertEquals(mapOf(0 to HoldColor.Red), connected(viewModel).litHolds)
 
-        fixture.viewModel.saveRoute("Traverse")
+        viewModel.saveRoute("Traverse")
         runCurrent()
-        assertTrue(fixture.viewModel.savedRoutes.value.isEmpty())
+        assertTrue(viewModel.savedRoutes.value.isEmpty())
     }
 
     @Test
@@ -311,8 +317,7 @@ class WallRoutesTest {
     fun `the restored route is shown but not pushed`() = runTest {
         // The wall may be showing someone else's route by now, and the app
         // cannot read it back to find out - WLED answers /json/live with 501.
-        // Opening the app is not a request to replace it, so the route is
-        // shown as not applied instead.
+        // Opening the app is not a request to replace it.
         val fixture = Fixture()
         runCurrent()
         fixture.viewModel.toggleHold(segmentIndex = 1)
@@ -331,7 +336,6 @@ class WallRoutesTest {
         runCurrent()
 
         assertEquals(mapOf(1 to HoldColor.Red), connected(reopened).litHolds)
-        assertFalse(connected(reopened).applied)
         assertEquals(pushesBefore, fixture.client.pushedHolds.size)
     }
 

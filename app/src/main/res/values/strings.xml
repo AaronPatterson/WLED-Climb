@@ -24,11 +24,10 @@
     <string name="wall_retry">Retry</string>
     <!-- The power button while the controller cannot be reached; tapping it tries again. -->
     <string name="wall_unreachable_retry">Wall out of reach. Try again</string>
-    <!-- Puts the route on screen onto the wall. Short: it sits beside three icons. -->
-    <string name="wall_apply">Light it up</string>
-    <!-- Shown in place of wall_apply once the wall is showing the route. -->
-    <string name="wall_applied">On the wall</string>
-    <string name="wall_auto_apply">Apply changes automatically</string>
+    <!-- Leaves the controller alone so a route can be built while someone climbs. -->
+    <string name="wall_work_offline">Work offline</string>
+    <!-- The power button while paused; tapping it goes back online. -->
+    <string name="wall_paused_resume">Working offline. Go back online</string>
 
     <!-- Hold colours -->
     <string name="color_red">Red</string>

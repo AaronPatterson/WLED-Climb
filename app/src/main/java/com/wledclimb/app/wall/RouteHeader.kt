@@ -3,20 +3,17 @@ package com.wledclimb.app.wall
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -180,14 +177,7 @@ internal fun RouteTitle(
 }
 
 /**
- * Apply on the left; reset, save as and save on the right, sitting on the wall
- * rather than above the name.
- *
- * Apply is set apart from the other three because it is a different kind of
- * thing: they change what is stored, and it changes what the wall shows. It
- * says which state the wall is in rather than only offering to change it, and
- * stays pressable once applied - the app cannot see the wall, so applying
- * again is how to take it back from another device.
+ * Reset, save as and save, sitting on the wall rather than above the name.
  *
  * Against the top of the grid because that is what they act on, and pushed
  * right so they do not make a second column of icons under the ones in the
@@ -202,12 +192,8 @@ internal fun RouteTitle(
 internal fun RouteActions(
     routeName: String?,
     modified: Boolean,
-    applied: Boolean,
     enabled: Boolean,
-    /** False with no controller to apply to. Everything else here is storage. */
-    canApply: Boolean,
     canSave: Boolean,
-    onApply: () -> Unit,
     onSave: () -> Unit,
     onSaveAs: () -> Unit,
     onReset: () -> Unit
@@ -217,26 +203,6 @@ internal fun RouteActions(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        if (applied) {
-            TextButton(onClick = onApply, enabled = enabled && canApply) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = stringResource(R.string.wall_applied),
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        } else {
-            FilledTonalButton(onClick = onApply, enabled = enabled && canApply) {
-                Text(text = stringResource(R.string.wall_apply))
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
         IconButton(onClick = onReset, enabled = enabled && modified) {
             Icon(
                 painter = painterResource(R.drawable.ic_reset),

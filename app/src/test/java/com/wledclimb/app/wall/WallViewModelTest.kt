@@ -209,7 +209,7 @@ class WallViewModelTest {
         assertTrue(viewModel.uiState.value is WallUiState.Error)
 
         client.failWith = null
-        viewModel.refresh()
+        viewModel.reconnect()
 
         assertTrue(viewModel.uiState.value is WallUiState.Ready)
     }
@@ -305,7 +305,6 @@ class WallViewModelTest {
         val state = connectedState(viewModel)
         assertEquals(ControllerState.Offline(WallProblem.Unreachable), state.controller)
         assertEquals(mapOf(1 to HoldColor.Red), state.litHolds)
-        assertFalse(state.applied)
     }
 
     @Test
