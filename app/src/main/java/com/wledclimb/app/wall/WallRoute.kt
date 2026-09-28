@@ -18,20 +18,27 @@ import com.wledclimb.app.storage.WallRepository
  * docs/kotlin-style.md).
  */
 @Composable
-fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
+fun WallRoute(wledBaseUrl: String?, onChangeController: () -> Unit) {
+    // Null address means the practice wall: no controller, and nothing asks
+    // the client anything - see DemoWall.
+    //
     // Keyed on the address so switching controllers gets a WallViewModel
     // (and WledClient) pointed at the new one, not the previous instance.
     val context = LocalContext.current
     val wallViewModel: WallViewModel = viewModel(
-        key = wledBaseUrl,
+        key = wledBaseUrl ?: DEMO_KEY,
         factory = LambdaViewModelFactory {
             val database = ClimbDatabase.instance(context)
             WallViewModel(
-                client = HttpWledClient(baseUrl = wledBaseUrl),
+                // Built either way rather than made nullable: it is never
+                // asked anything on the practice wall, and a nullable client
+                // would put that question at every call site instead of here.
+                client = HttpWledClient(baseUrl = wledBaseUrl ?: DEMO_KEY),
                 walls = WallRepository(database.walls()),
                 routes = RouteRepository(database.routes()),
                 settings = DataStoreWledSettings(context.applicationContext),
-                controllerAddress = wledBaseUrl
+                controllerAddress = wledBaseUrl ?: DEMO_KEY,
+                demo = wledBaseUrl == null
             )
         }
     )
@@ -71,3 +78,11 @@ fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
         onImportRoutes = { uri -> wallViewModel.importRoutes { resolver.openInputStream(uri) } }
     )
 }
+
+/**
+ * Stands in for an address on the practice wall, as the ViewModel key and as
+ * the base URL of a client nothing calls. `.invalid` is reserved by RFC 2606
+ * precisely so it can never resolve, which is the point: if this ever were
+ * requested, it fails rather than reaching something real.
+ */
+private const val DEMO_KEY = "http://practice.invalid"

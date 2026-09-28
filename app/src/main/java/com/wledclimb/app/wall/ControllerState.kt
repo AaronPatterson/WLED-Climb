@@ -38,6 +38,17 @@ sealed interface ControllerState {
     data class Offline(val problem: WallProblem) : ControllerState
 
     /**
+     * There is no controller and there never will be: the practice wall.
+     *
+     * Not an [Offline] with a reason, and not [Paused]. Both of those describe
+     * a wall that could be reached - one is waiting for it, the other is
+     * leaving it alone - and both offer a way back. Here there is nothing to
+     * come back to, so power, brightness and reconnecting are absent rather
+     * than disabled. See [com.wledclimb.app.storage.DemoWall].
+     */
+    data object Demo : ControllerState
+
+    /**
      * Offline by choice: the controller may well be in reach, and this device
      * has been told to leave it alone. Everything [Offline] allows, and for
      * the same reason nothing reaches the wall - here, so that a route can be
