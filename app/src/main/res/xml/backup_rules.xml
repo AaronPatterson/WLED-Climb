@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 11 and below. The Android 12+ equivalent is data_extraction_rules.xml,
+    and the two have to agree.
+
+    The saved controller address still travels, which is the part worth keeping:
+    a new phone comes back pointed at the same wall.
+
+    The database does not. Its schema is not migration-managed yet, so a file
+    written by one build can be one this build refuses to open - which is
+    exactly what happened to 0.11.0, where a restore put an in-development
+    schema onto a fresh install and route saving was silently dead.
+
+    ClimbDatabase now moves such a file aside rather than dying on it, but that
+    turns a bad restore into routes that quietly disappear, which is no better
+    from the outside. Until there are real migrations, routes move between
+    devices deliberately - export to a file, import on the other side - and not
+    by a mechanism that can only half work.
+-->
+<full-backup-content>
+    <exclude domain="database" path="climb.db" />
+    <exclude domain="database" path="climb.db-wal" />
+    <exclude domain="database" path="climb.db-shm" />
+</full-backup-content>

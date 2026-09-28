@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Keep in step with backup_rules.xml, which says why. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="climb.db" />
+        <exclude domain="database" path="climb.db-wal" />
+        <exclude domain="database" path="climb.db-shm" />
+    </cloud-backup>
+    <!--
+        Device-to-device transfer is excluded for the same reason. It looks
+        safer than a cloud restore because both phones are in the room, but it
+        copies the same file to a build that may refuse to read it.
+    -->
+    <device-transfer>
+        <exclude domain="database" path="climb.db" />
+        <exclude domain="database" path="climb.db-wal" />
+        <exclude domain="database" path="climb.db-shm" />
+    </device-transfer>
+</data-extraction-rules>
