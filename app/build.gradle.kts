@@ -80,8 +80,8 @@ android {
         // code, so this only has to move when a build actually goes out.
         // Forgetting shows up as an update that silently doesn't apply, which
         // is why versionName is on screen in the app.
-        versionCode = 11
-        versionName = "0.10.1"
+        versionCode = 12
+        versionName = "0.11.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
