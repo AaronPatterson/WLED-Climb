@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
 
                             is RootUiState.NeedsSetup -> SetupRoute(
                                 currentUrl = state.currentUrl,
+                                canCancel = state.returnTo != null,
                                 onSetupComplete = rootViewModel::onSetupComplete,
                                 onUseDemoWall = rootViewModel::onUseDemoWall,
                                 onCancel = rootViewModel::onSetupCancelled

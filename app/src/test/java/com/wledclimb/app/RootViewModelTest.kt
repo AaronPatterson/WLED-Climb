@@ -40,7 +40,59 @@ class RootViewModelTest {
 
         viewModel.onChangeController()
 
-        assertEquals(RootUiState.NeedsSetup(currentUrl = "http://192.168.1.50"), viewModel.uiState.value)
+        assertEquals(
+            RootUiState.NeedsSetup(
+                currentUrl = "http://192.168.1.50",
+                returnTo = RootUiState.Ready("http://192.168.1.50")
+            ),
+            viewModel.uiState.value
+        )
+    }
+
+    @Test
+    fun `leaving the practice wall pre-fills the saved address`() = runTest {
+        // The address is still stored while the practice wall is on screen, so
+        // someone on their way back to the real wall should not have to type
+        // it out from memory.
+        val viewModel = RootViewModel(FakeWledSettings(initialIp = "http://192.168.1.50"))
+        viewModel.onUseDemoWall()
+
+        viewModel.onChangeController()
+
+        assertEquals(
+            RootUiState.NeedsSetup(
+                currentUrl = "http://192.168.1.50",
+                returnTo = RootUiState.Demo
+            ),
+            viewModel.uiState.value
+        )
+    }
+
+    @Test
+    fun `leaving setup goes back to the practice wall it came from`() = runTest {
+        // Setup was a one-way door from the practice wall: nothing to pre-fill
+        // meant nothing to return to, so there was no way out but to connect.
+        val viewModel = RootViewModel(FakeWledSettings(initialIp = "http://192.168.1.50"))
+        viewModel.onUseDemoWall()
+        viewModel.onChangeController()
+
+        viewModel.onSetupCancelled()
+
+        assertEquals(RootUiState.Demo, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `the practice wall can be reached with no address ever saved`() = runTest {
+        val viewModel = RootViewModel(FakeWledSettings(initialIp = null))
+
+        viewModel.onUseDemoWall()
+        viewModel.onChangeController()
+
+        // Nothing to pre-fill, but still somewhere to go back to.
+        assertEquals(
+            RootUiState.NeedsSetup(currentUrl = null, returnTo = RootUiState.Demo),
+            viewModel.uiState.value
+        )
     }
 
     @Test
