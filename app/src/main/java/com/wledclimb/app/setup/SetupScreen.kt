@@ -1,5 +1,7 @@
 package com.wledclimb.app.setup
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
@@ -10,6 +12,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -18,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,13 +44,23 @@ fun SetupScreen(
             // middle of an otherwise empty page, so the keyboard would cover
             // the thing being typed into.
             .imePadding()
+            // Scrolls when it has to. Centred content is fine until it is
+            // taller than what is left of the screen - a small phone with the
+            // keyboard up and an error message showing - and without this the
+            // practice wall block below the line is simply cut off, with
+            // nothing to suggest it is there.
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         when (state) {
             is SetupUiState.Editing -> {
-                Text(text = stringResource(R.string.setup_title))
+                Text(
+                    text = stringResource(R.string.setup_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
                 OutlinedTextField(
                     value = state.ipInput,
                     onValueChange = onIpInputChange,
@@ -85,17 +100,6 @@ fun SetupScreen(
                     // above it. Setting an address is what someone came here
                     // to do; leaving is the way out rather than the offer.
                     //
-                    // Above leaving, below saving. Someone who has no wall to
-                    // type an address for has nothing else on this screen they
-                    // can do, and finding that out by failing to connect is a
-                    // worse way to learn it.
-                    TextButton(
-                        onClick = onUseDemoWall,
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Text(text = stringResource(R.string.setup_try_practice_wall))
-                    }
-
                     // Null on a first run, where leaving would show a wall the
                     // app has no address for.
                     onCancel?.let { cancel ->
@@ -103,6 +107,38 @@ fun SetupScreen(
                             Text(text = stringResource(R.string.setup_cancel))
                         }
                     }
+                }
+
+                // Below a line, with its own heading, rather than as a third
+                // button under the other two. Stacked with them it read as one
+                // more way out of this screen; what it actually is is the
+                // answer to a different question - what to do when there is no
+                // controller to type an address for. Someone with a wall in
+                // front of them should be able to ignore this whole block, and
+                // someone without one should find it without having to fail at
+                // connecting first.
+                HorizontalDivider(modifier = Modifier.padding(top = 32.dp))
+
+                Text(
+                    text = stringResource(R.string.setup_no_wall_heading),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 24.dp)
+                )
+                Text(
+                    text = stringResource(R.string.setup_no_wall_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                // Outlined rather than filled: an offer, not the thing this
+                // screen is for. Still a button rather than a text link,
+                // because it does something as real as the one above.
+                OutlinedButton(
+                    onClick = onUseDemoWall,
+                    modifier = Modifier.padding(top = 16.dp)
+                ) {
+                    Text(text = stringResource(R.string.setup_try_practice_wall))
                 }
             }
 
