@@ -91,6 +91,12 @@ fun WallTopBar(
     // answer while it is being asked or cannot be reached.
     val online = controller as? ControllerState.Online
     val paused = controller == ControllerState.Paused
+    // Whether working offline is a choice that can be made or unmade right
+    // now. Online can pause, Paused can come back, and the other three cannot:
+    // Connecting has an answer on its way, Offline is already not talking to
+    // anything, and Demo has nothing to talk to. Hoisted because the row and
+    // the checkbox inside it both have to say so - see the trailing icon.
+    val canChooseOffline = controller is ControllerState.Online || paused
     var menuOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     val backup = rememberRouteBackup(
@@ -257,7 +263,19 @@ fun WallTopBar(
                         trailingIcon = {
                             // Display only: the row is the control, and a
                             // second target inside it would toggle twice.
-                            Checkbox(checked = paused, onCheckedChange = null)
+                            //
+                            // Told separately that it is disabled. A disabled
+                            // DropdownMenuItem greys its text and leading icon
+                            // through LocalContentColor, which a Checkbox does
+                            // not read - it has colours of its own. Without
+                            // this the row went grey around a checkbox that
+                            // stayed bright, which read as a control still
+                            // waiting to be used.
+                            Checkbox(
+                                checked = paused,
+                                onCheckedChange = null,
+                                enabled = canChooseOffline
+                            )
                         },
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         // The checkbox has no handler, so it reports no
@@ -273,7 +291,7 @@ fun WallTopBar(
                         // PowerButton. The box stays unchecked there, because
                         // working offline is then circumstance rather than
                         // something anyone chose.
-                        enabled = controller is ControllerState.Online || paused,
+                        enabled = canChooseOffline,
                         onClick = {
                             menuOpen = false
                             if (paused) onReconnect() else onPause()
