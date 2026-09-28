@@ -10,6 +10,7 @@ package com.wledclimb.app.wall
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.FakeWledClient
+import com.wledclimb.app.FakeWledSettings
 import com.wledclimb.app.MainDispatcherRule
 import com.wledclimb.app.storage.InMemoryRouteDao
 import com.wledclimb.app.storage.InMemoryWallDao
@@ -24,6 +25,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 /**
  * Saving, loading, renaming and deleting routes through the ViewModel.
@@ -39,10 +41,12 @@ class WallRoutesTest {
     private class Fixture(val client: FakeWledClient = FakeWledClient(on = true)) {
         val wallDao = InMemoryWallDao()
         val routeDao = InMemoryRouteDao()
+        val settings = FakeWledSettings()
         val viewModel = WallViewModel(
             client = client,
             walls = WallRepository(wallDao),
             routes = RouteRepository(routeDao) { 1000L },
+            settings = settings,
             controllerAddress = "http://wall.test"
         )
     }
@@ -57,6 +61,24 @@ class WallRoutesTest {
         runCurrent()
 
         assertNotNull(connected(fixture.viewModel).wallId)
+    }
+
+    @Test
+    fun `the connected wall is remembered so it can be opened offline`() = runTest {
+        // With no controller to ask for its MAC, this is the only way back to
+        // the stored wall.
+        val fixture = Fixture()
+        runCurrent()
+
+        assertEquals(connected(fixture.viewModel).wallId, fixture.settings.savedWallId)
+    }
+
+    @Test
+    fun `a controller that cannot be reached changes nothing remembered`() = runTest {
+        val fixture = Fixture(FakeWledClient(failWith = IOException("connect timed out")))
+        runCurrent()
+
+        assertNull(fixture.settings.savedWallId)
     }
 
     @Test
@@ -276,6 +298,7 @@ class WallRoutesTest {
             client = fixture.client,
             walls = WallRepository(fixture.wallDao),
             routes = RouteRepository(fixture.routeDao) { 1000L },
+            settings = fixture.settings,
             controllerAddress = "http://wall.test"
         )
         runCurrent()
@@ -301,6 +324,7 @@ class WallRoutesTest {
             client = fixture.client,
             walls = WallRepository(fixture.wallDao),
             routes = RouteRepository(fixture.routeDao) { 1000L },
+            settings = fixture.settings,
             controllerAddress = "http://wall.test"
         )
         runCurrent()
@@ -336,6 +360,7 @@ class WallRoutesTest {
             client = fixture.client,
             walls = WallRepository(fixture.wallDao),
             routes = RouteRepository(fixture.routeDao) { 1000L },
+            settings = fixture.settings,
             controllerAddress = "http://wall.test"
         )
         runCurrent()

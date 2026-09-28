@@ -12,6 +12,7 @@ import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.network.WledStatus
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.FakeWledClient
+import com.wledclimb.app.FakeWledSettings
 import com.wledclimb.app.MainDispatcherRule
 import com.wledclimb.app.storage.InMemoryRouteDao
 import com.wledclimb.app.storage.InMemoryWallDao
@@ -42,6 +43,7 @@ class WallViewModelTest {
         client = client,
         walls = WallRepository(InMemoryWallDao()),
         routes = RouteRepository(InMemoryRouteDao()),
+        settings = FakeWledSettings(),
         controllerAddress = "http://wall.test"
     )
 

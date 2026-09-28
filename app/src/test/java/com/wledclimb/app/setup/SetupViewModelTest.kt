@@ -44,6 +44,21 @@ class SetupViewModelTest {
     }
 
     @Test
+    fun `a new address keeps the remembered wall`() = runTest {
+        // Only a controller answering as a different wall replaces it. A new
+        // address is often the same controller on a new lease, and until
+        // something answers, the last wall is still the one to open offline.
+        val settings = FakeWledSettings(initialIp = "http://192.168.1.50", initialWallId = 7L)
+        val viewModel = SetupViewModel(settings = settings, clientFactory = { client })
+        viewModel.onIpInputChange("192.168.1.60")
+
+        viewModel.testAndSave()
+
+        assertEquals("http://192.168.1.60", settings.savedIp)
+        assertEquals(7L, settings.savedWallId)
+    }
+
+    @Test
     fun `a bare address gets an http prefix, an explicit one is left alone`() = runTest {
         viewModel().apply {
             onIpInputChange("192.168.1.50")

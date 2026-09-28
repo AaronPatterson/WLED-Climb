@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wledclimb.app.LambdaViewModelFactory
 import com.wledclimb.app.network.HttpWledClient
+import com.wledclimb.app.settings.DataStoreWledSettings
 import com.wledclimb.app.storage.ClimbDatabase
 import com.wledclimb.app.storage.RouteRepository
 import com.wledclimb.app.storage.WallRepository
@@ -29,6 +30,7 @@ fun WallRoute(wledBaseUrl: String, onChangeController: () -> Unit) {
                 client = HttpWledClient(baseUrl = wledBaseUrl),
                 walls = WallRepository(database.walls()),
                 routes = RouteRepository(database.routes()),
+                settings = DataStoreWledSettings(context.applicationContext),
                 controllerAddress = wledBaseUrl
             )
         }
