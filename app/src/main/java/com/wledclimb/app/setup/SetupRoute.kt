@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.filterIsInstance
 fun SetupRoute(
     currentUrl: String?,
     onSetupComplete: (String) -> Unit,
+    onUseDemoWall: () -> Unit,
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current.applicationContext
@@ -47,6 +48,7 @@ fun SetupRoute(
         state = setupState,
         onIpInputChange = setupViewModel::onIpInputChange,
         onTestAndSave = setupViewModel::testAndSave,
+        onUseDemoWall = onUseDemoWall,
         onCancel = onCancel.takeIf { canCancel }
     )
 }

@@ -17,6 +17,15 @@ sealed interface RootUiState {
     data class NeedsSetup(val currentUrl: String? = null) : RootUiState
 
     data class Ready(val wledBaseUrl: String) : RootUiState
+
+    /**
+     * The practice wall: the wall screen with no controller behind it.
+     *
+     * Its own state rather than a [Ready] with no address, because every other
+     * thing that reads an address would then have to ask whether this one is
+     * real.
+     */
+    data object Demo : RootUiState
 }
 
 /**
@@ -39,10 +48,20 @@ class RootViewModel(private val settings: WledSettings) : ViewModel() {
         _uiState.value = RootUiState.Ready(wledBaseUrl)
     }
 
+    /** Shows the practice wall, without saving anything as the controller. */
+    fun onUseDemoWall() {
+        _uiState.value = RootUiState.Demo
+    }
+
     /** Called from the wall screen to go back and point the app at a different controller. */
     fun onChangeController() {
-        val current = _uiState.value as? RootUiState.Ready ?: return
-        _uiState.value = RootUiState.NeedsSetup(currentUrl = current.wledBaseUrl)
+        _uiState.value = when (val current = _uiState.value) {
+            is RootUiState.Ready -> RootUiState.NeedsSetup(currentUrl = current.wledBaseUrl)
+            // Leaving the practice wall goes to setup with nothing filled in:
+            // there is no address behind it to come back to.
+            RootUiState.Demo -> RootUiState.NeedsSetup()
+            else -> return
+        }
     }
 
     /**

@@ -5,6 +5,7 @@
     <string name="setup_title">Connect to your WLED controller</string>
     <string name="setup_address_label">Controller IP or hostname</string>
     <string name="setup_test_and_save">Test &amp; save</string>
+    <string name="setup_try_practice_wall">Try a practice wall</string>
     <string name="setup_cancel">Back to the wall</string>
     <string name="setup_connected">Connected</string>
     <string name="setup_error_empty_address">Enter the controller\'s IP address or hostname</string>

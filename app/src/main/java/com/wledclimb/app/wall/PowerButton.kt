@@ -65,6 +65,11 @@ internal fun PowerButton(
         is ControllerState.Online -> onToggle.takeIf { enabled }
         is ControllerState.Offline, ControllerState.Paused -> onReconnect
         ControllerState.Connecting -> null
+        // The practice wall has no controller to switch, and the bar leaves
+        // this button out entirely there - see WallTopBar. Spelled out rather
+        // than folded into an else so that a fifth state cannot arrive here
+        // and quietly become inert.
+        ControllerState.Demo -> null
     }
 
     // Built from a Box rather than an IconButton, which has no long press.
@@ -87,6 +92,9 @@ internal fun PowerButton(
             )
     ) {
         when (controller) {
+            // Not drawn: WallTopBar omits the button on a practice wall.
+            ControllerState.Demo -> Unit
+
             is ControllerState.Online -> {
                 // The whole button lights up rather than just the glyph. A
                 // tinted outline was too quiet to answer "is the wall on?"

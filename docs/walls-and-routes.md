@@ -168,6 +168,41 @@ different source fails as "routes cannot be saved for this wall"; it would
 replace rather than merge; and JSON is legible, which matters for a format whose
 job is to still be readable later.
 
+## The practice wall
+
+A wall with no controller behind it, reached from a button on the setup screen.
+
+It exists because the app was otherwise unusable without hardware on the same
+network, and three different people hit that: whoever reviews the app for the
+store and has no climbing wall to point it at, anyone deciding whether the app
+is worth setting up, and a child whose device never shares a network with the
+garage. All three saw the same screen saying the controller could not be
+reached, which reads as broken rather than as waiting.
+
+It is an ordinary wall row with a reserved controller MAC of `000000000000` -
+all-zero being the address that means "no device", and not one WLED can report,
+since it reads its own from the chip's eFuse. Being a MAC at all is what makes
+this cheap: walls are keyed by one, so the practice wall gets a row like any
+other rather than a special case threaded through storage. Routes, drafts,
+saving, renaming, export and import then work on it unchanged, because none of
+them ever needed a controller.
+
+Its grid is a copy of a real wall - 12x12 with 65 holds - rather than something
+invented. A grid where every cell is a hold would be a worse demonstration,
+because it would not show that a wall has gaps, and the gaps are most of what
+makes the grid worth looking at.
+
+`ControllerState.Demo` is what the wall screen sees, and it is deliberately
+neither `Offline` nor `Paused`. Those both describe a wall that could be
+reached - one waiting for it, the other leaving it alone - and both offer a way
+back. Here there is nothing to come back to, so power, brightness and
+reconnecting are absent rather than disabled.
+
+The practice wall is **not** recorded as the wall this device last reached.
+That setting exists so a real wall can be reopened with its controller out of
+reach; writing the practice wall there would open it next launch in place of
+the garage.
+
 ## Open questions
 
 - **What "last selected route" survives.** Process death, certainly. Whether it
