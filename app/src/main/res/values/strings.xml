@@ -103,7 +103,10 @@
     <string name="routes_backup_failed_empty">That file has no routes in it.</string>
     <string name="routes_backup_failed_unknown">The file could not be read or written. Check there is room on the device, then try again.</string>
     <string name="routes_delete_title">Delete %1$s?</string>
-    <string name="routes_delete_body">The route is removed. The wall stays lit as it is.</string>
+    <!-- Two messages because deleting does two different things to the wall:
+         nothing, unless the route being deleted is the one on it. -->
+    <string name="routes_delete_body">The route is removed. The wall is not changed.</string>
+    <string name="routes_delete_open_body">The route is removed and the wall is cleared.</string>
 
     <!-- Zoom -->
     <string name="wall_zoom_in">Zoom in</string>
