@@ -149,13 +149,26 @@ fun RenameRouteDialog(
 @Composable
 fun DeleteRouteDialog(
     name: String,
+    /**
+     * Whether this is the route on the wall. Deleting that one clears the
+     * wall, and the message has to say so: it used to promise "the wall stays
+     * lit as it is" for every route, which was untrue in exactly the case
+     * where it mattered.
+     */
+    isOpen: Boolean,
     onDismiss: () -> Unit,
     onDelete: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.routes_delete_title, name)) },
-        text = { Text(stringResource(R.string.routes_delete_body)) },
+        text = {
+            Text(
+                stringResource(
+                    if (isOpen) R.string.routes_delete_open_body else R.string.routes_delete_body
+                )
+            )
+        },
         confirmButton = {
             TextButton(onClick = onDelete) { Text(stringResource(R.string.routes_delete)) }
         },

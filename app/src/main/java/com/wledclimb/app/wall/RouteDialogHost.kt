@@ -133,6 +133,7 @@ internal fun RouteDialogHost(
 
         is RouteDialog.Delete -> DeleteRouteDialog(
             name = subject!!.name,
+            isOpen = dialog.routeId == openRoute?.id,
             onDismiss = onDismiss,
             onDelete = {
                 onDeleteRoute(dialog.routeId)

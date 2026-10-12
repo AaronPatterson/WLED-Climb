@@ -1,6 +1,7 @@
 package com.wledclimb.app.storage
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -80,6 +81,22 @@ abstract class ClimbDatabase : RoomDatabase() {
             instance ?: synchronized(this) {
                 instance ?: open(context).also { instance = it }
             }
+
+        /**
+         * Closes and forgets the process's database.
+         *
+         * For tests only. Robolectric runs every test in one process, so the
+         * single instance above would otherwise carry one test's walls and
+         * routes into the next - and a test that passes because of what the
+         * previous one left behind is worse than no test.
+         */
+        @VisibleForTesting
+        internal fun closeForTests() {
+            synchronized(this) {
+                instance?.close()
+                instance = null
+            }
+        }
 
         fun open(context: Context): ClimbDatabase =
             Room.databaseBuilder(
