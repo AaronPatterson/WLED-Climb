@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -179,6 +181,20 @@ android {
         // tests that run SQLite. The rest of the suite is unaffected: it never
         // touches a framework class, so it neither gains nor loses anything.
         unitTests.isIncludeAndroidResources = true
+
+        unitTests.all {
+            // The end-to-end tests run the real activity, with Compose, under
+            // Robolectric - a full app per test, in one JVM. Gradle's default
+            // of 512 MB is not enough for that: the suite did not fail, it
+            // slowed to a crawl as the collector ran almost continuously, and
+            // looked exactly like a hang.
+            it.maxHeapSize = "2g"
+            // A ceiling on the whole run, so anything that does hang fails CI
+            // in minutes rather than holding a runner for hours. Not a JUnit
+            // Timeout rule: that moves the test to another thread, which
+            // breaks Robolectric's main-thread model.
+            it.timeout.set(Duration.ofMinutes(20))
+        }
     }
 }
 
@@ -272,6 +288,11 @@ dependencies {
     // when it should reset - which is invisible to a test that only calls
     // functions. Version comes from the Compose BOM above.
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    // Already on the test runtime classpath through ui-test-junit4, which uses
+    // it internally. Declared for the end-to-end tests, which call it directly
+    // for the one thing Compose's test API has no equivalent of: the system
+    // back press that dismisses a dialog.
+    testImplementation("androidx.test.espresso:espresso-core:3.7.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("androidx.test:core-ktx:1.7.0")
     testImplementation("androidx.room:room-testing:2.8.5")

@@ -1,6 +1,7 @@
 package com.wledclimb.app.settings
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -36,5 +37,18 @@ class DataStoreWledSettings(private val context: Context) : WledSettings {
 
     override suspend fun savePaused(paused: Boolean) {
         context.dataStore.edit { it[pausedKey] = paused }
+    }
+
+    /**
+     * Forgets everything, as a fresh install would.
+     *
+     * For tests only. DataStore keeps one instance per file per process, and
+     * Robolectric runs every test in one process, so without this the address
+     * one test saved is already there when the next test starts - which is the
+     * difference between testing a first run and testing a returning one.
+     */
+    @VisibleForTesting
+    internal suspend fun clear() {
+        context.dataStore.edit { it.clear() }
     }
 }
