@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -128,6 +130,25 @@ class WallViewModel(
      * Not persisted - it is recovered from the open route on connect.
      */
     private var savedHolds: String = ""
+
+    /**
+     * Holds the operations that change which route is open, so they finish in
+     * the order they were asked for.
+     *
+     * Each is a coroutine of its own and each suspends part way through on the
+     * database, so without this they interleave. Saving and then starting a
+     * new route - one tap, through the "save first?" prompt - let the new
+     * route clear the selection while the save was still writing, and the save
+     * then finished by selecting the route it had just written. The wall was
+     * blank and the title named the saved route.
+     *
+     * A mutex rather than a queue because ordering is the whole of what is
+     * wanted, and this one is first-come-first-served. [savedHolds] is guarded
+     * by the same lock, which is the other half of it: two of these writing
+     * that baseline at once is how the wall ends up judged against a route it
+     * is not showing.
+     */
+    private val routeChanges = Mutex()
 
     init {
         start()
@@ -559,27 +580,29 @@ class WallViewModel(
         val wallId = current.wallId ?: return
 
         viewModelScope.launch {
-            try {
-                val saved = routes.save(
-                    wallId = wallId,
-                    name = name,
-                    holds = current.litHolds,
-                    wall = current.wall,
-                    routeId = routeId
-                )
-                // What is on the wall is now what is on disk, so it stops
-                // counting as unsaved work: the flag in state has to be
-                // cleared as well as the baseline it is judged against.
-                savedHolds = RouteHolds.serializeSegments(current.litHolds, current.wall)
-                (_uiState.value as? WallUiState.Ready)?.let {
-                    _uiState.value = it.copy(modified = false)
+            routeChanges.withLock {
+                try {
+                    val saved = routes.save(
+                        wallId = wallId,
+                        name = name,
+                        holds = current.litHolds,
+                        wall = current.wall,
+                        routeId = routeId
+                    )
+                    // What is on the wall is now what is on disk, so it stops
+                    // counting as unsaved work: the flag in state has to be
+                    // cleared as well as the baseline it is judged against.
+                    savedHolds = RouteHolds.serializeSegments(current.litHolds, current.wall)
+                    (_uiState.value as? WallUiState.Ready)?.let {
+                        _uiState.value = it.copy(modified = false)
+                    }
+                    select(saved)
+                    clearDraft()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "saveRoute($name) failed", e)
                 }
-                select(saved)
-                clearDraft()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "saveRoute($name) failed", e)
             }
         }
     }
@@ -595,22 +618,24 @@ class WallViewModel(
         val current = _uiState.value as? WallUiState.Ready ?: return
 
         viewModelScope.launch {
-            val holds = try {
-                routes.load(routeId, current.wall)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "loadRoute($routeId) failed", e)
-                null
-            } ?: return@launch
+            routeChanges.withLock {
+                val holds = try {
+                    routes.load(routeId, current.wall)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "loadRoute($routeId) failed", e)
+                    null
+                } ?: return@withLock
 
-            // Set before the push: showAndPush judges "modified" against this,
-            // so a freshly opened route reads as unmodified rather than as an
-            // edit of whatever was on the wall a moment ago.
-            savedHolds = routes.byId(routeId)?.holds.orEmpty()
-            select(routeId)
-            val latest = _uiState.value as? WallUiState.Ready ?: return@launch
-            showAndPush(latest, holds, "loadRoute($routeId)")
+                // Set before the push: showAndPush judges "modified" against
+                // this, so a freshly opened route reads as unmodified rather
+                // than as an edit of whatever was on the wall a moment ago.
+                savedHolds = routes.byId(routeId)?.holds.orEmpty()
+                select(routeId)
+                val latest = _uiState.value as? WallUiState.Ready ?: return@withLock
+                showAndPush(latest, holds, "loadRoute($routeId)")
+            }
         }
     }
 
@@ -628,10 +653,12 @@ class WallViewModel(
         if (_uiState.value !is WallUiState.Ready) return
 
         viewModelScope.launch {
-            savedHolds = ""
-            select(null)
-            val latest = _uiState.value as? WallUiState.Ready ?: return@launch
-            showAndPush(latest, emptyMap(), description)
+            routeChanges.withLock {
+                savedHolds = ""
+                select(null)
+                val latest = _uiState.value as? WallUiState.Ready ?: return@withLock
+                showAndPush(latest, emptyMap(), description)
+            }
         }
     }
 
@@ -690,24 +717,26 @@ class WallViewModel(
      */
     fun deleteRoute(routeId: Long) {
         viewModelScope.launch {
-            try {
-                routes.delete(routeId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "deleteRoute($routeId) failed", e)
-                return@launch
+            routeChanges.withLock {
+                try {
+                    routes.delete(routeId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "deleteRoute($routeId) failed", e)
+                    return@withLock
+                }
+
+                val current = _uiState.value as? WallUiState.Ready ?: return@withLock
+                if (current.selectedRouteId != routeId) return@withLock
+
+                // Baseline first, so the clear that follows reads as
+                // unmodified rather than as an edit of the route just gone.
+                savedHolds = ""
+                select(null)
+                val latest = _uiState.value as? WallUiState.Ready ?: return@withLock
+                showAndPush(latest, emptyMap(), "deleteRoute($routeId)")
             }
-
-            val current = _uiState.value as? WallUiState.Ready ?: return@launch
-            if (current.selectedRouteId != routeId) return@launch
-
-            // Baseline first, so the clear that follows reads as unmodified
-            // rather than as an edit of the route that has just gone.
-            savedHolds = ""
-            select(null)
-            val latest = _uiState.value as? WallUiState.Ready ?: return@launch
-            showAndPush(latest, emptyMap(), "deleteRoute($routeId)")
         }
     }
 
