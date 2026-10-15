@@ -3,7 +3,10 @@ package com.wledclimb.app
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.network.MAX_BRIGHTNESS
 import com.wledclimb.app.network.MIN_USABLE_BRIGHTNESS
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
+import com.wledclimb.app.network.gapLayoutFrom
+import com.wledclimb.app.network.serializeGaps
 import com.wledclimb.app.network.wallFrom
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.network.WledIdentity
@@ -72,6 +75,37 @@ class FakeWledClient(
         // Built from the same JSON the fixtures always held, so a test that
         // wants a particular wall still writes it the way WLED would send it.
         return wallFrom(rawConfig = config, rawGaps = gaps)
+    }
+
+    override suspend fun getGapLayout(): GapLayout {
+        failWith?.let { throw it }
+        return gapLayoutFrom(rawConfig = config, rawGaps = gaps)
+    }
+
+    /** When set, saving the gap file throws this - and nothing else does. */
+    var failSaveWith: Exception? = null
+
+    /** When set, restarting throws this - and nothing else does. */
+    var failRestartWith: Exception? = null
+
+    /** Every gap file saved, oldest first. */
+    val savedGapLayouts = mutableListOf<GapLayout>()
+    var restartCount = 0
+        private set
+
+    override suspend fun saveGapLayout(layout: GapLayout) {
+        failWith?.let { throw it }
+        failSaveWith?.let { throw it }
+        savedGapLayouts += layout
+        // Written back the way the controller would serve it, so the next
+        // read of the wall sees the new shape.
+        gaps = serializeGaps(layout)
+    }
+
+    override suspend fun restart() {
+        failWith?.let { throw it }
+        failRestartWith?.let { throw it }
+        restartCount++
     }
 
     /** Every wall state pushed, oldest first. */

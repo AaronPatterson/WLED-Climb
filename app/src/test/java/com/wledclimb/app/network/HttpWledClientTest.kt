@@ -1,5 +1,6 @@
 package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.GapCell
 import com.wledclimb.app.palette.HoldColor
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
@@ -292,5 +293,74 @@ class HttpWledClientTest {
         } catch (e: IOException) {
             assertTrue(e.message!!.contains("500"))
         }
+    }
+
+    @Test
+    fun `saveGapLayout uploads the file the way WLED's own settings page does`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("File Uploaded!"))
+        val layout = gapLayoutFrom(TWO_BY_TWO, "[1,0,-1,1]")
+
+        client().saveGapLayout(layout)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/upload", request.path)
+        assertTrue(
+            "expected a form upload, got ${request.getHeader("Content-Type")}",
+            request.getHeader("Content-Type")!!.startsWith("multipart/form-data")
+        )
+        val body = request.body.readUtf8()
+        assertTrue(
+            "the file goes in the part WLED reads, named for where it is written: $body",
+            body.contains("""name="data"; filename="/2d-gaps.json"""")
+        )
+        assertTrue("expected the gap values in the upload: $body", body.contains("[1,0,-1,1]"))
+    }
+
+    @Test
+    fun `saveGapLayout reports a PIN-locked controller as locked, not unreachable`() = runBlocking {
+        // WLED answers 401 to uploads until its settings PIN is entered. "Check
+        // the Wi-Fi" would be the wrong advice for that.
+        server.enqueue(MockResponse().setResponseCode(401).setBody("Please unlock settings using PIN code!"))
+
+        try {
+            client().saveGapLayout(gapLayoutFrom(TWO_BY_TWO, null))
+            fail("Expected a WledLockedException")
+        } catch (e: WledLockedException) {
+            // Expected.
+        }
+    }
+
+    @Test
+    fun `saveGapLayout throws on any other failure`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(500))
+
+        try {
+            client().saveGapLayout(gapLayoutFrom(TWO_BY_TWO, null))
+            fail("Expected an IOException")
+        } catch (e: IOException) {
+            assertTrue(e.message!!.contains("500"))
+        }
+    }
+
+    @Test
+    fun `restart asks WLED to reboot`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true}"""))
+
+        client().restart()
+
+        val request = server.takeRequest()
+        assertEquals("/json/state", request.path)
+        assertTrue(JSONObject(request.body.readUtf8()).getBoolean("rb"))
+    }
+
+    @Test
+    fun `getGapLayout keeps an unused LED apart from no LED`() = runBlocking {
+        serveWall(TWO_BY_TWO, gaps = "[1,0,-1,1]")
+
+        val layout = client().getGapLayout()
+
+        assertEquals(GapCell.Unused, layout.cellAt(1, 0))
+        assertEquals(GapCell.NoLed, layout.cellAt(0, 1))
     }
 }

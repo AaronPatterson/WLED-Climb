@@ -1,5 +1,7 @@
 package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.GapCell
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
 import org.json.JSONArray
 import org.json.JSONException
@@ -53,6 +55,29 @@ fun parseGaps(rawGaps: String): List<Int> = try {
     throw WledConfigException("The controller's gap file (/2d-gaps.json) isn't a valid list of numbers.", e)
 }
 
+/**
+ * The gap file for [layout], as WLED reads it: a flat array, one entry per
+ * position in the bounding box, row-major.
+ *
+ * Positions no panel covers are written as -1. WLED never reads them - its
+ * `setUpMatrix()` only looks up positions inside a panel - so any value would
+ * do, and "no LED" is the one that is also true.
+ */
+fun serializeGaps(layout: GapLayout): String {
+    val values = JSONArray()
+    for (row in layout.cells) {
+        for (cell in row) {
+            values.put(
+                when (cell) {
+                    GapCell.Hold -> 1
+                    GapCell.Unused -> 0
+                    GapCell.NoLed, null -> -1
+                }
+            )
+        }
+    }
+    return values.toString()
+}
 
 /**
  * The wall a controller is describing, from the two files that describe it.
@@ -62,10 +87,17 @@ fun parseGaps(rawGaps: String): List<Int> = try {
  * can climb. What comes out is a [Wall] and nothing else, which is what lets
  * the rest of the app know nothing about `/json/cfg`.
  */
-fun wallFrom(rawConfig: String, rawGaps: String?): Wall {
+fun wallFrom(rawConfig: String, rawGaps: String?): Wall =
+    gapLayoutFrom(rawConfig, rawGaps).toWall()
+
+/**
+ * The same two files read for the gap editor, keeping the difference between
+ * an unused LED and no LED that [wallFrom] flattens away.
+ */
+fun gapLayoutFrom(rawConfig: String, rawGaps: String?): GapLayout {
     val panels = parsePanels(rawConfig)
     if (panels.isEmpty()) {
         throw WledConfigException("WLED is in 2D mode but has no panels configured.")
     }
-    return buildWall(panels = panels, gaps = rawGaps?.let { parseGaps(it) })
+    return buildGapLayout(panels = panels, gaps = rawGaps?.let { parseGaps(it) })
 }

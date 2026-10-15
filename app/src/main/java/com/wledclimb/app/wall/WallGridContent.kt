@@ -20,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -71,19 +73,71 @@ internal fun WallGrid(
                     wall.height
                 )
 
+    ZoomableGrid(
+        columns = wall.width,
+        rows = wall.height,
+        description = description,
+        onCellTap = { x, y ->
+            if (wall.hasHoldAt(x, y)) onHoldTap(wall.segmentIndexAt(x, y))
+        },
+        scale = scale,
+        pan = pan,
+        onTransform = onTransform,
+        modifier = modifier
+    ) { x, y, cellSize ->
+        // Grid position, not position along the strip: this is what WLED's
+        // per-pixel commands address.
+        val segmentIndex = wall.segmentIndexAt(x, y)
+        HoldCell(
+            segmentIndex = if (wall.hasHoldAt(x, y)) segmentIndex else null,
+            color = litHolds[segmentIndex],
+            column = x,
+            row = y,
+            size = cellSize,
+            onTap = onHoldTap
+        )
+    }
+}
+
+/**
+ * A grid of square cells, sized so the whole of it is visible at once, which
+ * can be pinched, dragged and tapped. What each cell looks like, and what a
+ * tap on one means, belong to whoever draws it - the wall's holds here, the
+ * gap file in the gap editor - so the two cannot drift apart in how they feel
+ * under a finger.
+ *
+ * Taps arrive as a column and row, and only for positions inside the grid.
+ */
+@Composable
+internal fun ZoomableGrid(
+    columns: Int,
+    rows: Int,
+    description: String,
+    onCellTap: (x: Int, y: Int) -> Unit,
+    scale: Float,
+    pan: Offset,
+    onTransform: (pan: Offset, zoom: Float, viewport: Size) -> Unit,
+    modifier: Modifier = Modifier,
+    cell: @Composable (x: Int, y: Int, size: Dp) -> Unit
+) {
     // Scaling through graphicsLayer doesn't change the layout size, so a
     // zoomed grid would otherwise paint straight over the controls below it.
     BoxWithConstraints(modifier.clipToBounds()) {
         // Fit whichever dimension runs out first: on a landscape tablet a
         // 12x12 wall is limited by height, on a phone by width. Fitting only
         // to width pushes the controls below the grid off the screen.
-        val cellSize = if (wall.width > 0 && wall.height > 0) {
-            minOf(maxWidth / wall.width, maxHeight / wall.height)
+        val cellSize = if (columns > 0 && rows > 0) {
+            minOf(maxWidth / columns, maxHeight / rows)
         } else {
             0.dp
         }
         val cellPx = with(LocalDensity.current) { cellSize.toPx() }
-        val viewport = Size(cellPx * wall.width, cellPx * wall.height)
+        val viewport = Size(cellPx * columns, cellPx * rows)
+        // Read through state rather than keyed on: the handler closes over
+        // what the cells are showing and is a new lambda every time that
+        // changes, and restarting the detector for each one could drop a tap
+        // that landed in between.
+        val currentOnCellTap by rememberUpdatedState(onCellTap)
 
         Column(
             modifier = Modifier
@@ -98,16 +152,11 @@ internal fun WallGrid(
                     translationX = pan.x
                     translationY = pan.y
                 }
-                .pointerInput(cellPx, wall) {
+                .pointerInput(cellPx, columns, rows) {
                     detectTapGestures { offset ->
                         val x = (offset.x / cellPx).toInt()
                         val y = (offset.y / cellPx).toInt()
-                        if (x in 0 until wall.width &&
-                            y in 0 until wall.height &&
-                            wall.hasHoldAt(x, y)
-                        ) {
-                            onHoldTap(wall.segmentIndexAt(x, y))
-                        }
+                        if (x in 0 until columns && y in 0 until rows) currentOnCellTap(x, y)
                     }
                 }
                 .pointerInput(viewport) {
@@ -116,20 +165,10 @@ internal fun WallGrid(
                     }
                 }
         ) {
-            for (y in 0 until wall.height) {
+            for (y in 0 until rows) {
                 Row {
-                    for (x in 0 until wall.width) {
-                        // Grid position, not position along the strip: this is
-                        // what WLED's per-pixel commands address.
-                        val segmentIndex = wall.segmentIndexAt(x, y)
-                        HoldCell(
-                            segmentIndex = if (wall.hasHoldAt(x, y)) segmentIndex else null,
-                            color = litHolds[segmentIndex],
-                            column = x,
-                            row = y,
-                            size = cellSize,
-                            onTap = onHoldTap
-                        )
+                    for (x in 0 until columns) {
+                        cell(x, y, cellSize)
                     }
                 }
             }
@@ -208,7 +247,8 @@ private fun HoldCell(
 internal fun GridControls(
     scale: Float,
     canClear: Boolean,
-    onClearWall: () -> Unit,
+    /** Null where there is nothing to clear, as in the gap editor. */
+    onClearWall: (() -> Unit)?,
     onZoom: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -229,11 +269,13 @@ internal fun GridControls(
                 contentDescription = stringResource(R.string.wall_zoom_in)
             )
         }
-        IconButton(onClick = onClearWall, enabled = canClear) {
-            Icon(
-                painter = painterResource(R.drawable.ic_clear_wall),
-                contentDescription = stringResource(R.string.wall_clear)
-            )
+        if (onClearWall != null) {
+            IconButton(onClick = onClearWall, enabled = canClear) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_clear_wall),
+                    contentDescription = stringResource(R.string.wall_clear)
+                )
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.GapCell
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
 
 /**
@@ -23,26 +25,49 @@ import com.wledclimb.app.grid.Wall
  * be read by nothing: per-pixel commands address grid positions. The walk, and
  * the eight tests pinning its serpentine and orientation behaviour, went with
  * them. [Panel]'s wiring flags are still parsed, because they describe the
- * controller's configuration faithfully and a future gap-file editor may need
- * to reason about them.
+ * controller's configuration faithfully. The gap editor turned out not to need
+ * them: it works on grid positions too, through [buildGapLayout].
  */
-fun buildWall(panels: List<Panel>, gaps: List<Int>? = null): Wall {
+fun buildWall(panels: List<Panel>, gaps: List<Int>? = null): Wall =
+    buildGapLayout(panels, gaps).toWall()
+
+/**
+ * The same reading of panels and gap file as [buildWall], stopping short of
+ * flattening it: each covered position keeps which of WLED's three gap values
+ * it has, which is what the gap editor needs and the rest of the app does not.
+ *
+ * A [gaps] list too short to use reads as every covered position having a
+ * hold, which is what WLED does with it - so saving from here replaces a
+ * broken file with one that says what the wall is already doing.
+ */
+fun buildGapLayout(panels: List<Panel>, gaps: List<Int>? = null): GapLayout {
     val width = panels.maxOfOrNull { it.xOffset + it.width } ?: 0
     val height = panels.maxOfOrNull { it.yOffset + it.height } ?: 0
 
     val effectiveGaps = gaps?.takeIf { it.size >= width * height }
 
-    val cells = MutableList(height) { MutableList(width) { false } }
+    val cells = MutableList(height) { MutableList<GapCell?>(width) { null } }
 
     for (panel in panels) {
         for (y in panel.yOffset until panel.yOffset + panel.height) {
             for (x in panel.xOffset until panel.xOffset + panel.width) {
                 if (y !in 0 until height || x !in 0 until width) continue
-                val gapValue = effectiveGaps?.get(y * width + x)
-                cells[y][x] = gapValue == null || gapValue > 0
+                cells[y][x] = gapCellFor(effectiveGaps?.get(y * width + x))
             }
         }
     }
 
-    return Wall(width = width, height = height, cells = cells)
+    return GapLayout(width = width, height = height, cells = cells)
+}
+
+/**
+ * WLED's reading of one gap value: above zero is lit, zero is an LED left
+ * unused, and below zero is no LED - `gapTable[index] > 0` and `>= 0` in its
+ * `setUpMatrix()`. No value at all is a position with no gap file to say
+ * otherwise, which WLED lights.
+ */
+private fun gapCellFor(value: Int?): GapCell = when {
+    value == null || value > 0 -> GapCell.Hold
+    value == 0 -> GapCell.Unused
+    else -> GapCell.NoLed
 }

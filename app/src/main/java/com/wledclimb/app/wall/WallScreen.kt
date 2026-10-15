@@ -110,7 +110,9 @@ fun WallScreen(
     onRenameRoute: (Long, String) -> Unit,
     onDeleteRoute: (Long) -> Unit,
     onExportRoutes: (Uri) -> Unit,
-    onImportRoutes: (Uri) -> Unit
+    onImportRoutes: (Uri) -> Unit,
+    /** Null on the practice wall, which has no gap file to edit. */
+    onEditLayout: (() -> Unit)?
 ) {
     var brightnessOpen by remember { mutableStateOf(false) }
     // One dialog at a time, named by what it is asking. Seven flags and two
@@ -226,6 +228,14 @@ fun WallScreen(
                     canExportRoutes = routes.isNotEmpty(),
                     onExportRoutes = onExportRoutes,
                     onImportRoutes = onImportRoutes,
+                    onEditLayout = onEditLayout?.let { edit ->
+                        {
+                            // Leaving the wall, so nothing of it should be
+                            // left floating over the editor.
+                            brightnessOpen = false
+                            edit()
+                        }
+                    },
                     onToggleRoutes = {
                         // The brightness row floats over the content, so going
                         // to the routes would have left it hanging over the
