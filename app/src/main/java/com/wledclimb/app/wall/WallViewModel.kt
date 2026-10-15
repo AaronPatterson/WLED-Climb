@@ -295,6 +295,28 @@ class WallViewModel(
     }
 
     /**
+     * Reads the wall from the controller again, after its gap file was
+     * changed from this app.
+     *
+     * The same as coming back to the wall with [reconnect]: the new shape is
+     * taken, the route on screen is carried across it by position, and it is
+     * put back on the wall - which has just restarted to use the new layout,
+     * and come back showing whatever WLED shows at boot.
+     *
+     * Left alone while paused, which is a request not to talk to the
+     * controller; the new shape arrives with the next reconnect instead.
+     */
+    fun refreshLayout() {
+        val current = _uiState.value as? WallUiState.Ready ?: return
+        when (current.controller) {
+            is ControllerState.Online, is ControllerState.Offline -> Unit
+            ControllerState.Connecting, ControllerState.Paused, ControllerState.Demo -> return
+        }
+        _uiState.value = current.copy(controller = ControllerState.Connecting)
+        viewModelScope.launch { connect(sendOnArrival = true) }
+    }
+
+    /**
      * Leaves the controller alone until [reconnect], with it in reach or not,
      * so a route can be built while someone climbs the one on the wall.
      *

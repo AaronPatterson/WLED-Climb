@@ -3,10 +3,14 @@ package com.wledclimb.app
 import com.wledclimb.app.palette.HoldColor
 import com.wledclimb.app.network.MAX_BRIGHTNESS
 import com.wledclimb.app.network.MIN_USABLE_BRIGHTNESS
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
+import com.wledclimb.app.network.gapLayoutFrom
+import com.wledclimb.app.network.serializeGaps
 import com.wledclimb.app.network.wallFrom
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.network.WledIdentity
+import com.wledclimb.app.network.WledLockedException
 import com.wledclimb.app.network.WledStatus
 
 /** A `/json/cfg` body describing one 2x2 panel, enough to build a real Wall from. */
@@ -72,6 +76,54 @@ class FakeWledClient(
         // Built from the same JSON the fixtures always held, so a test that
         // wants a particular wall still writes it the way WLED would send it.
         return wallFrom(rawConfig = config, rawGaps = gaps)
+    }
+
+    override suspend fun getGapLayout(): GapLayout {
+        failWith?.let { throw it }
+        return gapLayoutFrom(rawConfig = config, rawGaps = gaps)
+    }
+
+    /** When set, saving the gap file throws this - and nothing else does. */
+    var failSaveWith: Exception? = null
+
+    /** When set, restarting throws this - and nothing else does. */
+    var failRestartWith: Exception? = null
+
+    /** Every gap file saved, oldest first. */
+    val savedGapLayouts = mutableListOf<GapLayout>()
+    var restartCount = 0
+        private set
+
+    /**
+     * The controller's settings PIN, or null for one with none. While set and
+     * not yet offered, saving the gap file is refused as WLED refuses it.
+     */
+    var settingsPin: String? = null
+    private var unlocked = false
+
+    /** Every PIN offered, oldest first. */
+    val offeredPins = mutableListOf<String>()
+
+    override suspend fun unlock(pin: String) {
+        failWith?.let { throw it }
+        offeredPins += pin
+        unlocked = pin == settingsPin
+    }
+
+    override suspend fun saveGapLayout(layout: GapLayout) {
+        failWith?.let { throw it }
+        failSaveWith?.let { throw it }
+        if (settingsPin != null && !unlocked) throw WledLockedException("locked")
+        savedGapLayouts += layout
+        // Written back the way the controller would serve it, so the next
+        // read of the wall sees the new shape.
+        gaps = serializeGaps(layout)
+    }
+
+    override suspend fun restart() {
+        failWith?.let { throw it }
+        failRestartWith?.let { throw it }
+        restartCount++
     }
 
     /** Every wall state pushed, oldest first. */

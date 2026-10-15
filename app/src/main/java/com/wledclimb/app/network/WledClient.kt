@@ -1,8 +1,7 @@
 package com.wledclimb.app.network
 
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
-
-import com.wledclimb.app.palette.HoldColor
 
 /**
  * Talks to a WLED controller's JSON HTTP API.
@@ -54,6 +53,36 @@ interface WledClient {
      * than an error.
      */
     suspend fun getWall(): Wall
+
+    /**
+     * The same two files as [getWall], keeping what the gap file says about
+     * each position rather than only whether it has a hold - which is what
+     * editing the gap file needs, and nothing else does.
+     */
+    suspend fun getGapLayout(): GapLayout
+
+    /**
+     * Replaces the controller's `/2d-gaps.json` with one describing [layout].
+     *
+     * WLED reads the gap file when it sets up the matrix, which it does at
+     * boot, so the new layout is not used until [restart].
+     *
+     * @throws WledLockedException when the controller's settings are locked
+     *   with a PIN, which WLED applies to uploads.
+     */
+    suspend fun saveGapLayout(layout: GapLayout)
+
+    /**
+     * Offers the controller's settings PIN, which unlocks settings - uploads
+     * included - for every client, for fifteen minutes.
+     *
+     * WLED does not say whether the PIN was right. The next upload does: it
+     * still throws [WledLockedException] if it was not.
+     */
+    suspend fun unlock(pin: String)
+
+    /** Reboots the controller. It stops answering for a few seconds. */
+    suspend fun restart()
 
     /**
      * Lights individual holds. [lit] maps a **segment buffer index**

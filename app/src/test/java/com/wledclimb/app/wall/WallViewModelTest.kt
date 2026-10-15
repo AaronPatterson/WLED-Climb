@@ -76,6 +76,37 @@ class WallViewModelTest {
     }
 
     @Test
+    fun `refreshing the layout picks up a changed gap file`() = runTest {
+        // What happens after the gap editor saves: the controller restarts
+        // with a different shape, and the wall on screen is the old one.
+        val client = FakeWledClient(on = true)
+        val viewModel = wallViewModel(client)
+        assertEquals(4, connectedState(viewModel).wall.holdCount)
+
+        client.gaps = "[1,-1,1,1]"
+        viewModel.refreshLayout()
+
+        val state = connectedState(viewModel)
+        assertFalse(state.wall.hasHoldAt(x = 1, y = 0))
+        assertEquals(3, state.wall.holdCount)
+        assertTrue(state.online.on)
+    }
+
+    @Test
+    fun `refreshing the layout puts the route back on the restarted wall`() = runTest {
+        // A restarted controller shows whatever WLED shows at boot, not the
+        // route that was up before.
+        val client = FakeWledClient(on = true)
+        val viewModel = wallViewModel(client)
+        viewModel.toggleHold(segmentIndex = 3)
+        client.pushedHolds.clear()
+
+        viewModel.refreshLayout()
+
+        assertEquals(listOf(mapOf(3 to HoldColor.Red.hex)), client.pushedHolds)
+    }
+
+    @Test
     fun `an unchanged brightness is not sent again`() = runTest {
         // A drag reports per frame and truncates to an Int, so the same value
         // arrives several times in a row. Each repeat would rebuild the state

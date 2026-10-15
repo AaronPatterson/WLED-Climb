@@ -38,6 +38,8 @@ chosen.
 
 **Phase 11 (navigation polish) complete**: the colour palette moved to a tray at the bottom of the screen and the zoom controls became compact icons, rather than sitting wherever they first fitted.
 
+**Phase 12 (visual gap editor) complete**: *Edit hold layout* in the menu opens WLED's gap file as a grid, editable the way a route is built - pick hold, unused LED or no LED from the tray and tap positions to mark them. Saving uploads `/2d-gaps.json` and restarts the controller so it uses it, and is only possible while the controller is connected.
+
 **Phase 4 (local save/load) in progress**: the storage layer is done - a Room database of walls and routes, with the DAOs covered by Robolectric tests that run them against real SQLite. There is no UI on top of it yet, so nothing is saveable from the app; that is the next piece of work. See [`docs/walls-and-routes.md`](docs/walls-and-routes.md) for the data model and [`docs/navigation.md`](docs/navigation.md) for where the screens are heading.
 
 ## Getting started (opening in Android Studio)

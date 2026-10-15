@@ -1,13 +1,14 @@
 package com.wledclimb.app.network
 
-import com.wledclimb.app.palette.HoldColor
 import android.util.Log
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.grid.Wall
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -37,10 +38,11 @@ private val sharedHttpClient: OkHttpClient by lazy {
 /**
  * [WledClient] over WLED's JSON HTTP API.
  *
- * Wraps three endpoints so far: GET/POST http://<ip>/json/state (wall on/off),
- * GET http://<ip>/json/cfg (raw grid/segment config), and GET
- * http://<ip>/2d-gaps.json (optional gap file, served straight from WLED's
- * filesystem). See https://kno.wled.ge/interfaces/json-api/ for the full API
+ * Wraps GET/POST http://<ip>/json/state (wall on/off, holds, unlocking, restarting),
+ * GET http://<ip>/json/info (identity), GET http://<ip>/json/cfg (raw
+ * grid/segment config), GET http://<ip>/2d-gaps.json (optional gap file,
+ * served straight from WLED's filesystem) and POST http://<ip>/upload (the gap
+ * file going the other way). See https://kno.wled.ge/interfaces/json-api/ for the full API
  * this will grow into (colors, presets, etc.) in later phases.
  */
 class HttpWledClient(
@@ -129,6 +131,74 @@ class HttpWledClient(
         }
     }
 
+    override suspend fun getGapLayout(): GapLayout = withContext(Dispatchers.IO) {
+        coroutineScope {
+            val config = async { fetchConfig() }
+            val gaps = async { fetchGaps() }
+            gapLayoutFrom(rawConfig = config.await(), rawGaps = gaps.await())
+        }
+    }
+
+    override suspend fun saveGapLayout(layout: GapLayout) = withContext(Dispatchers.IO) {
+        // The same request WLED's own 2D settings page makes: a form upload to
+        // /upload, the file in a part named "data", and the path it is to be
+        // written to as the part's file name.
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                name = "data",
+                filename = GAP_FILE,
+                body = serializeGaps(layout).toRequestBody(jsonMediaType)
+            )
+            .build()
+        val request = Request.Builder()
+            .url("$baseUrl/upload")
+            .post(body)
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            if (response.code == 401) {
+                throw WledLockedException("Controller at ${response.request.url.host} is PIN-locked")
+            }
+            if (!response.isSuccessful) {
+                throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
+            }
+        }
+    }
+
+    override suspend fun unlock(pin: String) = withContext(Dispatchers.IO) {
+        // The JSON API's own way in, rather than the form WLED's PIN page
+        // posts: /json/state checks a "pin" field before anything else and
+        // otherwise leaves the wall as it is, since nothing else is sent.
+        val request = Request.Builder()
+            .url("$baseUrl/json/state")
+            .post(JSONObject().put("pin", pin).toString().toRequestBody(jsonMediaType))
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
+            }
+        }
+    }
+
+    override suspend fun restart() = withContext(Dispatchers.IO) {
+        // Not through postState: WLED answers {"success":true} and goes down,
+        // so there is no state to ask it for. It waits long enough to send
+        // that answer before rebooting, which is what makes the reply worth
+        // checking.
+        val request = Request.Builder()
+            .url("$baseUrl/json/state")
+            .post(JSONObject().put("rb", true).toString().toRequestBody(jsonMediaType))
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
+            }
+        }
+    }
+
     private fun fetchConfig(): String {
         val request = Request.Builder()
             .url("$baseUrl/json/cfg")
@@ -151,7 +221,7 @@ class HttpWledClient(
     /** Null when no gap file is configured, which WLED answers with a 404. */
     private fun fetchGaps(): String? {
         val request = Request.Builder()
-            .url("$baseUrl/2d-gaps.json")
+            .url("$baseUrl$GAP_FILE")
             .get()
             .build()
 
@@ -212,3 +282,6 @@ class HttpWledClient(
 }
 
 private const val TAG = "HttpWledClient"
+
+/** Where WLED keeps the gap file, both to serve it and to upload it to. */
+private const val GAP_FILE = "/2d-gaps.json"

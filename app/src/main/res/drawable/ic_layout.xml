@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- A three by three grid with one position empty: which positions have
+         holds, and which do not. -->
+    <path android:pathData="M4,4 h4 v4 h-4 z M10,4 h4 v4 h-4 z M16,4 h4 v4 h-4 z M4,10 h4 v4 h-4 z M16,10 h4 v4 h-4 z M4,16 h4 v4 h-4 z M10,16 h4 v4 h-4 z M16,16 h4 v4 h-4 z"
+        android:fillColor="#FF000000" />
+    <path android:pathData="M10.75,10.75 h2.5 v2.5 h-2.5 z"
+        android:strokeColor="#FF000000" android:strokeWidth="1.5"
+        android:fillColor="#00000000" />
+</vector>

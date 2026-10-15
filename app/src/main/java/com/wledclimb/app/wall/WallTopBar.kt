@@ -85,6 +85,11 @@ fun WallTopBar(
     canExportRoutes: Boolean,
     onExportRoutes: (Uri) -> Unit,
     onImportRoutes: (Uri) -> Unit,
+    /**
+     * Opens the gap editor. Null where there is no controller to have a gap
+     * file - the practice wall - so the item is left out rather than greyed.
+     */
+    onEditLayout: (() -> Unit)?,
 ) {
     val unsavedDescription = stringResource(R.string.routes_unsaved_changes)
     // Power and brightness are questions for the controller, and have no
@@ -297,6 +302,33 @@ fun WallTopBar(
                             if (paused) onReconnect() else onPause()
                         }
                     )
+
+                    if (onEditLayout != null) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.wall_edit_layout),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_layout),
+                                    contentDescription = null
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                            // Only with the controller answering. The editor
+                            // reads the gap file from it and saves back to
+                            // it, and the stored wall cannot stand in: it
+                            // does not know an unused LED from no LED.
+                            enabled = online != null,
+                            onClick = {
+                                menuOpen = false
+                                onEditLayout()
+                            }
+                        )
+                    }
 
                     DropdownMenuItem(
                         text = {

@@ -105,6 +105,36 @@
     <string name="routes_delete_title">Delete %1$s?</string>
     <string name="routes_delete_body">The route is removed. The wall stays lit as it is.</string>
 
+    <!-- Gap editor: which grid positions have holds, from WLED's gap file -->
+    <string name="wall_edit_layout">Edit hold layout</string>
+    <string name="gaps_title">Hold layout</string>
+    <string name="gaps_back">Back to the wall</string>
+    <string name="gaps_loading">Reading the wall\'s layout…</string>
+    <string name="gaps_load_failed_title">Couldn\'t read the wall\'s layout</string>
+    <string name="gaps_hint">Tap a position to mark what is there. Saving restarts the controller.</string>
+    <string name="gaps_hold">Hold</string>
+    <string name="gaps_unused">Unused LED</string>
+    <string name="gaps_no_led">No LED</string>
+    <!-- One position in the grid; %3$s is what it is marked as, e.g. "Unused LED". -->
+    <string name="gaps_cell_description">Column %1$d, row %2$d: %3$s</string>
+    <string name="gaps_reset">Undo changes</string>
+    <string name="gaps_reset_title">Undo your changes?</string>
+    <string name="gaps_reset_body">The layout goes back to what the controller has now.</string>
+    <string name="gaps_save">Save to the controller</string>
+    <string name="gaps_save_title">Save the hold layout?</string>
+    <string name="gaps_save_body">The controller restarts to use it, so the wall goes dark for a few seconds. Routes using holds that are no longer there are marked as changed, and keep them in case they come back.</string>
+    <string name="gaps_save_confirm">Save and restart</string>
+    <string name="gaps_discard_title">Leave without saving?</string>
+    <string name="gaps_discard_body">Your changes are lost. The layout on the controller stays as it is.</string>
+    <string name="gaps_restarting">Restarting the controller so it uses the new layout…</string>
+    <string name="gaps_error_locked">The controller\'s settings are locked with a PIN, so nothing was saved. Save again to enter it.</string>
+    <string name="gaps_pin_title">Enter the controller\'s PIN</string>
+    <string name="gaps_pin_body">This controller\'s settings are locked. Enter the settings PIN set in WLED to save the layout.</string>
+    <string name="gaps_pin_label">PIN</string>
+    <string name="gaps_pin_rejected">That PIN didn\'t work. Check it and try again.</string>
+    <string name="gaps_pin_confirm">Unlock and save</string>
+    <string name="gaps_error_not_restarted">The layout was saved, but the controller didn\'t restart to use it. Save again to try once more.</string>
+
     <!-- Zoom -->
     <string name="wall_zoom_in">Zoom in</string>
     <string name="wall_zoom_out">Zoom out</string>

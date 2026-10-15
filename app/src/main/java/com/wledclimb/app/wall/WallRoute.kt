@@ -3,9 +3,14 @@ package com.wledclimb.app.wall
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wledclimb.app.LambdaViewModelFactory
+import com.wledclimb.app.gaps.GapEditorRoute
 import com.wledclimb.app.network.HttpWledClient
 import com.wledclimb.app.settings.DataStoreWledSettings
 import com.wledclimb.app.storage.ClimbDatabase
@@ -57,6 +62,27 @@ fun WallRoute(wledBaseUrl: String?, onChangeController: () -> Unit) {
         )
     }
 
+    // The gap editor takes the wall's place rather than opening over it: it
+    // is configuration, which leaves power and brightness behind - see
+    // docs/navigation.md. Saveable so turning the device does not drop
+    // someone out of it, and counted so each visit starts from the
+    // controller's file rather than the last visit's edits.
+    var editingLayout by rememberSaveable { mutableStateOf(false) }
+    var layoutVisits by rememberSaveable { mutableIntStateOf(0) }
+    if (editingLayout && wledBaseUrl != null) {
+        GapEditorRoute(
+            wledBaseUrl = wledBaseUrl,
+            session = layoutVisits,
+            onClose = { saved ->
+                editingLayout = false
+                // The controller has just restarted with a different shape,
+                // and the wall on screen is the old one.
+                if (saved) wallViewModel.refreshLayout()
+            }
+        )
+        return
+    }
+
     WallScreen(
         state = wallState,
         routes = routes,
@@ -75,7 +101,15 @@ fun WallRoute(wledBaseUrl: String?, onChangeController: () -> Unit) {
         onRenameRoute = wallViewModel::renameRoute,
         onDeleteRoute = wallViewModel::deleteRoute,
         onExportRoutes = { uri -> wallViewModel.exportRoutes { resolver.openOutputStream(uri) } },
-        onImportRoutes = { uri -> wallViewModel.importRoutes { resolver.openInputStream(uri) } }
+        onImportRoutes = { uri -> wallViewModel.importRoutes { resolver.openInputStream(uri) } },
+        onEditLayout = if (wledBaseUrl == null) {
+            null
+        } else {
+            {
+                layoutVisits++
+                editingLayout = true
+            }
+        }
     )
 }
 
