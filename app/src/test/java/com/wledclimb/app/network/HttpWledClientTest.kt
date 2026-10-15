@@ -344,6 +344,21 @@ class HttpWledClientTest {
     }
 
     @Test
+    fun `unlock offers the PIN through the JSON API and nothing else`() = runBlocking {
+        // Anything more in the same request would change the wall - "on" and
+        // "bri" are read from it too.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true}"""))
+
+        client().unlock("1234")
+
+        val request = server.takeRequest()
+        assertEquals("/json/state", request.path)
+        val body = JSONObject(request.body.readUtf8())
+        assertEquals("1234", body.getString("pin"))
+        assertEquals(1, body.length())
+    }
+
+    @Test
     fun `restart asks WLED to reboot`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true}"""))
 

@@ -10,6 +10,7 @@ import com.wledclimb.app.network.serializeGaps
 import com.wledclimb.app.network.wallFrom
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.network.WledIdentity
+import com.wledclimb.app.network.WledLockedException
 import com.wledclimb.app.network.WledStatus
 
 /** A `/json/cfg` body describing one 2x2 panel, enough to build a real Wall from. */
@@ -93,9 +94,26 @@ class FakeWledClient(
     var restartCount = 0
         private set
 
+    /**
+     * The controller's settings PIN, or null for one with none. While set and
+     * not yet offered, saving the gap file is refused as WLED refuses it.
+     */
+    var settingsPin: String? = null
+    private var unlocked = false
+
+    /** Every PIN offered, oldest first. */
+    val offeredPins = mutableListOf<String>()
+
+    override suspend fun unlock(pin: String) {
+        failWith?.let { throw it }
+        offeredPins += pin
+        unlocked = pin == settingsPin
+    }
+
     override suspend fun saveGapLayout(layout: GapLayout) {
         failWith?.let { throw it }
         failSaveWith?.let { throw it }
+        if (settingsPin != null && !unlocked) throw WledLockedException("locked")
         savedGapLayouts += layout
         // Written back the way the controller would serve it, so the next
         // read of the wall sees the new shape.

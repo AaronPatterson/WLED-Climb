@@ -72,6 +72,15 @@ interface WledClient {
      */
     suspend fun saveGapLayout(layout: GapLayout)
 
+    /**
+     * Offers the controller's settings PIN, which unlocks settings - uploads
+     * included - for every client, for fifteen minutes.
+     *
+     * WLED does not say whether the PIN was right. The next upload does: it
+     * still throws [WledLockedException] if it was not.
+     */
+    suspend fun unlock(pin: String)
+
     /** Reboots the controller. It stops answering for a few seconds. */
     suspend fun restart()
 

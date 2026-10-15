@@ -23,13 +23,17 @@ sealed interface GapEditorUiState {
      *
      * [saving] is an upload in flight. [problem] is why the last save did not
      * work, and stays until the next edit or save.
+     *
+     * [pin] is the controller asking for its settings PIN before it will take
+     * the file, and null the rest of the time.
      */
     data class Editing(
         val original: GapLayout,
         val layout: GapLayout,
         val brush: GapCell = GapCell.Hold,
         val saving: Boolean = false,
-        val problem: GapEditorProblem? = null
+        val problem: GapEditorProblem? = null,
+        val pin: PinRequest? = null
     ) : GapEditorUiState {
 
         /** Whether there is anything to save, or to lose by leaving. */
@@ -44,4 +48,14 @@ sealed interface GapEditorUiState {
 
     /** Saved and in use. There is nothing left to do here. */
     data object Saved : GapEditorUiState
+}
+
+/** Why the editor is asking for the controller's settings PIN. */
+enum class PinRequest {
+
+    /** The upload was refused because settings are locked. */
+    Needed,
+
+    /** A PIN was offered and the upload was still refused. */
+    Rejected
 }

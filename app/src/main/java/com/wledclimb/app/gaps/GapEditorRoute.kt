@@ -47,6 +47,8 @@ fun GapEditorRoute(
         onPaint = viewModel::paint,
         onBrushSelect = viewModel::selectBrush,
         onReset = viewModel::reset,
-        onSave = viewModel::save
+        onSave = viewModel::save,
+        onSubmitPin = viewModel::saveWithPin,
+        onCancelPin = viewModel::cancelPin
     )
 }

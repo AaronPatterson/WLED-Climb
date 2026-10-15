@@ -127,7 +127,12 @@
     <string name="gaps_discard_title">Leave without saving?</string>
     <string name="gaps_discard_body">Your changes are lost. The layout on the controller stays as it is.</string>
     <string name="gaps_restarting">Restarting the controller so it uses the new layout…</string>
-    <string name="gaps_error_locked">The controller\'s settings are locked with a PIN. Unlock them in WLED\'s own settings page, then save again.</string>
+    <string name="gaps_error_locked">The controller\'s settings are locked with a PIN, so nothing was saved. Save again to enter it.</string>
+    <string name="gaps_pin_title">Enter the controller\'s PIN</string>
+    <string name="gaps_pin_body">This controller\'s settings are locked. Enter the settings PIN set in WLED to save the layout.</string>
+    <string name="gaps_pin_label">PIN</string>
+    <string name="gaps_pin_rejected">That PIN didn\'t work. Check it and try again.</string>
+    <string name="gaps_pin_confirm">Unlock and save</string>
     <string name="gaps_error_not_restarted">The layout was saved, but the controller didn\'t restart to use it. Save again to try once more.</string>
 
     <!-- Zoom -->

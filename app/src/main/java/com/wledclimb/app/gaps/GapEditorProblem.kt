@@ -16,8 +16,8 @@ sealed interface GapEditorProblem {
     data object NotAWledMatrix : GapEditorProblem
 
     /**
-     * WLED refused the upload because its settings are locked with a PIN.
-     * Unlocking them in WLED's own settings page unlocks them for the app too.
+     * WLED refused the upload because its settings are locked with a PIN, and
+     * the PIN was not given. Saving again asks for it again.
      */
     data object Locked : GapEditorProblem
 

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wledclimb.app.grid.GapCell
+import com.wledclimb.app.grid.GapLayout
 import com.wledclimb.app.network.WledClient
 import com.wledclimb.app.network.WledConfigException
 import com.wledclimb.app.network.WledLockedException
@@ -14,6 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 private const val TAG = "GapEditorViewModel"
 
@@ -30,6 +34,12 @@ private const val RESTART_POLL_MS = 2_000L
  * come back shows as out of reach on the wall, with the usual way to try again.
  */
 private const val RESTART_TIMEOUT_MS = 45_000L
+
+/**
+ * How long WLED refuses every PIN after a wrong one - `PIN_RETRY_COOLDOWN` in
+ * its const.h, which is 3 seconds - with a little over for the round trip.
+ */
+private val PIN_RETRY_COOLDOWN = 3_500.milliseconds
 
 /**
  * Edits the controller's gap file: which grid positions have a hold, which
@@ -49,6 +59,9 @@ class GapEditorViewModel(private val client: WledClient) : ViewModel() {
 
     private val _uiState = MutableStateFlow<GapEditorUiState>(GapEditorUiState.Loading)
     val uiState: StateFlow<GapEditorUiState> = _uiState.asStateFlow()
+
+    /** When a PIN was last offered and refused - see [waitOutRejection]. */
+    private var lastRejection: TimeMark? = null
 
     init {
         load()
@@ -116,46 +129,98 @@ class GapEditorViewModel(private val client: WledClient) : ViewModel() {
      * layout while the wall went on drawing the old one, putting holds on the
      * wrong LEDs.
      *
-     * A failed upload changes nothing and leaves the edits on screen to try
-     * again. A failed restart leaves them there too, still counted as unsaved,
-     * so that saving again - the same file, and another restart - is the way
-     * to finish.
+     * A controller whose settings are locked refuses the file, and the PIN is
+     * asked for - see [saveWithPin]. A failed upload changes nothing and
+     * leaves the edits on screen to try again. A failed restart leaves them
+     * there too, still counted as unsaved, so that saving again - the same
+     * file, and another restart - is the way to finish.
      */
     fun save() {
         val current = _uiState.value as? GapEditorUiState.Editing ?: return
         if (current.saving || !current.modified) return
         _uiState.value = current.copy(saving = true, problem = null)
+        viewModelScope.launch { upload(current.layout, pin = null) }
+    }
 
-        viewModelScope.launch {
-            try {
-                client.saveGapLayout(current.layout)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "uploading the gap file failed", e)
-                failSave(problemFor(e))
-                return@launch
+    /**
+     * Offers the settings PIN the controller asked for, then saves.
+     *
+     * Not kept anywhere. A right PIN unlocks the controller for fifteen
+     * minutes, which outlasts any one visit here, and a PIN stored on a
+     * tablet a six-year-old uses is one they can get at.
+     */
+    fun saveWithPin(pin: String) {
+        val current = _uiState.value as? GapEditorUiState.Editing ?: return
+        if (current.saving || current.pin == null) return
+        _uiState.value = current.copy(saving = true, problem = null)
+        viewModelScope.launch { upload(current.layout, pin = pin) }
+    }
+
+    /** Gives up on the PIN. Nothing is saved, and saving again asks again. */
+    fun cancelPin() {
+        val current = _uiState.value as? GapEditorUiState.Editing ?: return
+        if (current.saving || current.pin == null) return
+        _uiState.value = current.copy(pin = null, problem = GapEditorProblem.Locked)
+    }
+
+    private suspend fun upload(layout: GapLayout, pin: String?) {
+        try {
+            if (pin != null) {
+                waitOutRejection()
+                client.unlock(pin)
             }
-
-            try {
-                client.restart()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "restarting after saving the gap file failed", e)
-                failSave(GapEditorProblem.NotRestarted)
-                return@launch
-            }
-
-            _uiState.value = GapEditorUiState.Restarting
-            awaitRestart()
-            _uiState.value = GapEditorUiState.Saved
+            client.saveGapLayout(layout)
+            lastRejection = null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: WledLockedException) {
+            // Asked for the PIN rather than reported: the person saving is
+            // the person who knows it. A PIN that was offered and still
+            // refused is said to be wrong, so the same one is not tried again.
+            Log.i(TAG, "the controller wants its settings PIN")
+            if (pin != null) lastRejection = TimeSource.Monotonic.markNow()
+            val latest = _uiState.value as? GapEditorUiState.Editing ?: return
+            _uiState.value = latest.copy(
+                saving = false,
+                pin = if (pin == null) PinRequest.Needed else PinRequest.Rejected
+            )
+            return
+        } catch (e: Exception) {
+            Log.e(TAG, "uploading the gap file failed", e)
+            failSave(problemFor(e))
+            return
         }
+
+        try {
+            client.restart()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "restarting after saving the gap file failed", e)
+            failSave(GapEditorProblem.NotRestarted)
+            return
+        }
+
+        _uiState.value = GapEditorUiState.Restarting
+        awaitRestart()
+        _uiState.value = GapEditorUiState.Saved
+    }
+
+    /**
+     * After a wrong PIN WLED refuses every PIN for a few seconds, the right
+     * one included, so that guessing is slow. Someone who mistyped and
+     * quickly corrected it would be told the right PIN was wrong; waiting
+     * out the rest of that window first means they are not.
+     */
+    private suspend fun waitOutRejection() {
+        val rejected = lastRejection ?: return
+        val remaining = PIN_RETRY_COOLDOWN - rejected.elapsedNow()
+        if (remaining.isPositive()) delay(remaining)
     }
 
     private fun failSave(problem: GapEditorProblem) {
         val latest = _uiState.value as? GapEditorUiState.Editing ?: return
-        _uiState.value = latest.copy(saving = false, problem = problem)
+        _uiState.value = latest.copy(saving = false, problem = problem, pin = null)
     }
 
     /**

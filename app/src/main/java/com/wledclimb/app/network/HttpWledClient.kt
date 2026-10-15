@@ -38,7 +38,7 @@ private val sharedHttpClient: OkHttpClient by lazy {
 /**
  * [WledClient] over WLED's JSON HTTP API.
  *
- * Wraps GET/POST http://<ip>/json/state (wall on/off, holds, restarting),
+ * Wraps GET/POST http://<ip>/json/state (wall on/off, holds, unlocking, restarting),
  * GET http://<ip>/json/info (identity), GET http://<ip>/json/cfg (raw
  * grid/segment config), GET http://<ip>/2d-gaps.json (optional gap file,
  * served straight from WLED's filesystem) and POST http://<ip>/upload (the gap
@@ -160,6 +160,22 @@ class HttpWledClient(
             if (response.code == 401) {
                 throw WledLockedException("Controller at ${response.request.url.host} is PIN-locked")
             }
+            if (!response.isSuccessful) {
+                throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
+            }
+        }
+    }
+
+    override suspend fun unlock(pin: String) = withContext(Dispatchers.IO) {
+        // The JSON API's own way in, rather than the form WLED's PIN page
+        // posts: /json/state checks a "pin" field before anything else and
+        // otherwise leaves the wall as it is, since nothing else is sent.
+        val request = Request.Builder()
+            .url("$baseUrl/json/state")
+            .post(JSONObject().put("pin", pin).toString().toRequestBody(jsonMediaType))
+            .build()
+
+        httpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("WLED returned HTTP ${response.code} for ${response.request.url}")
             }

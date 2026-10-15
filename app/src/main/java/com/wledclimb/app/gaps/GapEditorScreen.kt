@@ -50,6 +50,15 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.wledclimb.app.R
@@ -84,7 +93,9 @@ fun GapEditorScreen(
     onPaint: (x: Int, y: Int) -> Unit,
     onBrushSelect: (GapCell) -> Unit,
     onReset: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onSubmitPin: (String) -> Unit,
+    onCancelPin: () -> Unit
 ) {
     var dialog by rememberSaveable { mutableStateOf<GapEditorDialog?>(null) }
     val editing = state as? GapEditorUiState.Editing
@@ -155,6 +166,18 @@ fun GapEditorScreen(
         }
     }
 
+    // Not one of the dialogs above: the view model asks for it, when the
+    // controller refuses the file, rather than a button here.
+    val pinRequest = editing?.pin
+    if (editing != null && pinRequest != null) {
+        PinDialog(
+            rejected = pinRequest == PinRequest.Rejected,
+            checking = editing.saving,
+            onDismiss = onCancelPin,
+            onSubmit = onSubmitPin
+        )
+    }
+
     // Only while editing: every question here is about the edits.
     if (editing != null) {
         when (dialog) {
@@ -216,6 +239,90 @@ private fun ConfirmDialog(
         }
     )
 }
+
+/**
+ * The controller's settings PIN, which WLED wants before it will take a file.
+ *
+ * Four digits, because that is all WLED compares - so the button waits for
+ * four rather than sending something that cannot be right. Hidden as it is
+ * typed, the way WLED's own PIN page hides it.
+ */
+@Composable
+private fun PinDialog(
+    rejected: Boolean,
+    checking: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit
+) {
+    var pin by rememberSaveable { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val canSubmit = pin.length == PIN_LENGTH && !checking
+    // Emptied as it goes, so a PIN that is refused does not have to be
+    // deleted before the right one is typed.
+    val submit: () -> Unit = {
+        onSubmit(pin)
+        pin = ""
+    }
+
+    LaunchedEffect(rejected) { focusRequester.requestFocus() }
+
+    AlertDialog(
+        onDismissRequest = { if (!checking) onDismiss() },
+        title = { Text(stringResource(R.string.gaps_pin_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.gaps_pin_body))
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { typed ->
+                        pin = typed.filter { it.isDigit() }.take(PIN_LENGTH)
+                    },
+                    enabled = !checking,
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.gaps_pin_label)) },
+                    isError = rejected,
+                    supportingText = if (rejected) {
+                        { Text(stringResource(R.string.gaps_pin_rejected)) }
+                    } else {
+                        null
+                    },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.NumberPassword,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { if (canSubmit) submit() }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .focusRequester(focusRequester)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = canSubmit, onClick = submit) {
+                if (checking) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(stringResource(R.string.gaps_pin_confirm))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(enabled = !checking, onClick = onDismiss) {
+                Text(stringResource(R.string.routes_cancel))
+            }
+        }
+    )
+}
+
+/** WLED's settings PIN is four digits, and it compares no more than that. */
+private const val PIN_LENGTH = 4
 
 @Composable
 private fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {

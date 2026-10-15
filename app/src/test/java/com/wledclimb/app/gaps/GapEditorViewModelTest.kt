@@ -9,10 +9,10 @@ import com.wledclimb.app.MainDispatcherRule
 import com.wledclimb.app.ONE_DIMENSIONAL_CONFIG
 import com.wledclimb.app.grid.GapCell
 import com.wledclimb.app.network.WledClient
-import com.wledclimb.app.network.WledLockedException
 import com.wledclimb.app.network.WledStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -180,8 +180,8 @@ class GapEditorViewModelTest {
     }
 
     @Test
-    fun `a PIN-locked controller keeps the edits and says why`() = runTest {
-        val client = FakeWledClient().apply { failSaveWith = WledLockedException("locked") }
+    fun `a PIN-locked controller asks for its PIN`() = runTest {
+        val client = FakeWledClient().apply { settingsPin = "1234" }
         val viewModel = GapEditorViewModel(client)
         viewModel.paint(x = 0, y = 0)
 
@@ -189,10 +189,99 @@ class GapEditorViewModelTest {
         advanceUntilIdle()
 
         val state = editing(viewModel)
-        assertEquals(GapEditorProblem.Locked, state.problem)
+        assertEquals(PinRequest.Needed, state.pin)
         assertTrue("the edits should still be there", state.modified)
         assertFalse(state.saving)
         assertEquals("nothing was written, so nothing restarts", 0, client.restartCount)
+    }
+
+    @Test
+    fun `the right PIN unlocks the controller and saves`() = runTest {
+        val client = FakeWledClient().apply { settingsPin = "1234" }
+        val viewModel = GapEditorViewModel(client)
+        viewModel.paint(x = 0, y = 0)
+        viewModel.save()
+        advanceUntilIdle()
+
+        viewModel.saveWithPin("1234")
+        advanceUntilIdle()
+
+        assertEquals(GapEditorUiState.Saved, viewModel.uiState.value)
+        assertEquals(1, client.savedGapLayouts.size)
+        assertEquals(1, client.restartCount)
+    }
+
+    @Test
+    fun `a wrong PIN is said to be wrong, and asked for again`() = runTest {
+        val client = FakeWledClient().apply { settingsPin = "1234" }
+        val viewModel = GapEditorViewModel(client)
+        viewModel.paint(x = 0, y = 0)
+        viewModel.save()
+        advanceUntilIdle()
+
+        viewModel.saveWithPin("9999")
+        advanceUntilIdle()
+
+        val state = editing(viewModel)
+        assertEquals(PinRequest.Rejected, state.pin)
+        assertFalse(state.saving)
+        assertTrue(client.savedGapLayouts.isEmpty())
+    }
+
+    @Test
+    fun `the right PIN after a wrong one waits out WLED's lockout first`() = runTest {
+        // WLED refuses every PIN for 3s after a wrong one, the right one
+        // included. Sent straight away, a corrected PIN would be reported as
+        // wrong too.
+        val client = FakeWledClient().apply { settingsPin = "1234" }
+        val viewModel = GapEditorViewModel(client)
+        viewModel.paint(x = 0, y = 0)
+        viewModel.save()
+        advanceUntilIdle()
+        viewModel.saveWithPin("9999")
+        advanceUntilIdle()
+
+        viewModel.saveWithPin("1234")
+        runCurrent()
+        assertEquals("not offered yet", listOf("9999"), client.offeredPins)
+        assertTrue("shown as checking meanwhile", editing(viewModel).saving)
+
+        advanceUntilIdle()
+        assertEquals(listOf("9999", "1234"), client.offeredPins)
+        assertEquals(GapEditorUiState.Saved, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `giving up on the PIN keeps the edits and says why nothing was saved`() = runTest {
+        val client = FakeWledClient().apply { settingsPin = "1234" }
+        val viewModel = GapEditorViewModel(client)
+        viewModel.paint(x = 0, y = 0)
+        viewModel.save()
+        advanceUntilIdle()
+
+        viewModel.cancelPin()
+
+        val state = editing(viewModel)
+        assertNull(state.pin)
+        assertEquals(GapEditorProblem.Locked, state.problem)
+        assertTrue(state.modified)
+    }
+
+    @Test
+    fun `losing the controller while unlocking says so rather than blaming the PIN`() = runTest {
+        val client = FakeWledClient().apply { settingsPin = "1234" }
+        val viewModel = GapEditorViewModel(client)
+        viewModel.paint(x = 0, y = 0)
+        viewModel.save()
+        advanceUntilIdle()
+
+        client.failWith = IOException("no route to host")
+        viewModel.saveWithPin("1234")
+        advanceUntilIdle()
+
+        val state = editing(viewModel)
+        assertNull(state.pin)
+        assertEquals(GapEditorProblem.Unreachable, state.problem)
     }
 
     @Test
